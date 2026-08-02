@@ -1,8 +1,8 @@
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { AuthProvider } from './contexts/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 import LoginPage from './features/auth/LoginPage'
-
 
 function App() {
   return (
@@ -11,7 +11,14 @@ function App() {
       <AuthProvider>
         <Routes >
           <Route path="/login" element={<LoginPage />} />
-          
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                  <div> Contenido protegido</div>
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </AuthProvider>
     </BrowserRouter></div>
