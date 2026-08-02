@@ -1,15 +1,8 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { AuthContext } from './useAuth'
 import { loginUser } from '../services/api'
 import type { LoginFormState } from '../types'
 
-interface AuthContextValue {
-  isAuthenticated: boolean
-  userEmail: string
-  signIn: (form: LoginFormState) => Promise<void>
-  signOut: () => void
-}
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('auth_token')))
@@ -39,11 +32,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider')
-  }
-
-  return context
-}
