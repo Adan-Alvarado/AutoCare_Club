@@ -6,6 +6,7 @@ import './App.css'
 import LoginPage from './features/auth/LoginPage'
 import ServicesPage from './features/services/ServicesPage'
 import VehiclesPage from './features/vehicles/VehiclesPage'
+import CartPage from './features/cart/CartPage'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
                   <Routes>
                     <Route path="services" element={<ServicesPage />} />
                     <Route path="vehicles" element={<VehiclesPage />} />
+                    <Route path="cart" element={<CartPage />} />
                     <Route path="" element={<Navigate to="services" replace />} />
                   </Routes>
                 </AppLayout>
