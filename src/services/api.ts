@@ -22,6 +22,14 @@ export interface ServiceItem {
   isActive: boolean
 }
 
+export interface ServiceCreatePayload {
+  name: string
+  description: string
+  price: number
+  durationMinutes: number
+  imageUrl?: string | null
+}
+
 export interface VehicleDto {
   id: string
   userId: string
@@ -71,6 +79,19 @@ export async function getServices(): Promise<ServiceItem[]> {
   })
 
   return result.data ?? []
+}
+
+export async function createService(data: ServiceCreatePayload): Promise<ServiceItem> {
+  const result = await httpRequest<ServiceItem>('/api/services', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo crear el servicio')
+  }
+
+  return result.data
 }
 
 export async function getVehicles(): Promise<VehicleDto[]> {
