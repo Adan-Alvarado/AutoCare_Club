@@ -7,7 +7,9 @@ import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
 import { Plus } from 'lucide-react'
 
-const CART_STORAGE_KEY = 'autocare_cart_services'
+function getCartStorageKey(userEmail?: string | null) {
+  return userEmail ? `autocare_cart_services_${userEmail}` : 'autocare_cart_services_guest'
+}
 
 export default function ServicesPage() {
   const [services, setServices] = useState<ServiceItem[]>([])
@@ -36,7 +38,9 @@ export default function ServicesPage() {
   function addServiceToCart(service: ServiceItem) {
     if (typeof window === 'undefined') return
 
-    const stored = window.localStorage.getItem(CART_STORAGE_KEY)
+    const userEmail = window.localStorage.getItem('auth_email') ?? ''
+    const cartStorageKey = getCartStorageKey(userEmail)
+    const stored = window.localStorage.getItem(cartStorageKey)
     let currentServices: ServiceItem[] = []
 
     if (stored) {
@@ -52,7 +56,7 @@ export default function ServicesPage() {
     console.log(service.id, currentServices.map((item) => item.id))
     const nextServices = [...currentServices, service]
 
-    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(nextServices))
+    window.localStorage.setItem(cartStorageKey, JSON.stringify(nextServices))
     setFeedback(`${service.name} agregado al carrito.`)
   }
 
