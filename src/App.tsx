@@ -4,6 +4,7 @@ import AppLayout from './layouts/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 import LoginPage from './features/auth/LoginPage'
+import RegisterPage from './features/auth/RegisterPage'
 import ServicesPage from './features/services/ServicesPage'
 import VehiclesPage from './features/vehicles/VehiclesPage'
 import CartPage from './features/cart/CartPage'
@@ -15,6 +16,7 @@ function App() {
       <AuthProvider>
         <Routes >
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route
             path="/*"
             element={

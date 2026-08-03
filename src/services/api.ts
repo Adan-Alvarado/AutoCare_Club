@@ -6,6 +6,12 @@ export interface LoginResponseData {
   refreshToken: string
 }
 
+export interface RegisterResponseData {
+  email: string
+  token: string
+  refreshToken: string
+}
+
 export interface ServiceItem {
   id: string
   name: string
@@ -41,6 +47,19 @@ export async function loginUser(email: string, password: string): Promise<LoginR
 
   if (!result.status || !result.data) {
     throw new Error(result.message || 'No se pudo iniciar sesión')
+  }
+
+  return result.data
+}
+
+export async function registerUser(firstName: string, lastName: string, email: string, password: string, confirmPassword: string): Promise<RegisterResponseData> {
+  const result = await httpRequest<RegisterResponseData>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ firstName, lastName, email, password, confirmPassword }),
+  })
+
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo crear la cuenta')
   }
 
   return result.data
