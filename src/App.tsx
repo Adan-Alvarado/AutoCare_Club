@@ -1,9 +1,12 @@
-import { BrowserRouter, Route, Routes } from 'react-router'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AuthProvider } from './contexts/AuthContext'
 import AppLayout from './layouts/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 import LoginPage from './features/auth/LoginPage'
+import ServicesPage from './features/services/ServicesPage'
+import VehiclesPage from './features/vehicles/VehiclesPage'
+import CartPage from './features/cart/CartPage'
 
 function App() {
   return (
@@ -17,7 +20,12 @@ function App() {
             element={
               <ProtectedRoute>
                 <AppLayout>
-                  <div>Contenido protegido</div>
+                  <Routes>
+                    <Route path="services" element={<ServicesPage />} />
+                    <Route path="vehicles" element={<VehiclesPage />} />
+                    <Route path="cart" element={<CartPage />} />
+                    <Route path="" element={<Navigate to="services" replace />} />
+                  </Routes>
                 </AppLayout>
               </ProtectedRoute>
             }
