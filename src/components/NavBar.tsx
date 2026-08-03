@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router'
 import { useAuth } from '../contexts/useAuth'
 import { BorderButton } from './Buttons'
 import { LogOut, ShoppingBag } from 'lucide-react'
+import { RoutesBar } from './Routes'
 
 export default function NavBar() {
   const { isAuthenticated, userEmail, signOut } = useAuth()
@@ -16,6 +17,9 @@ export default function NavBar() {
           AutoCare Club
           
           </span>
+      </div>
+      <div className="app-routes md:flex hidden flex-row items-center justify-center gap-4">
+        <RoutesBar />
       </div>
      
       <div className="app-actions flex flex-row items-center justify-center">
