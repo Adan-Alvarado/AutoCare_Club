@@ -5,7 +5,9 @@ import { BorderButton, FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
 import { Trash } from 'lucide-react'
 
-const CART_STORAGE_KEY = 'autocare_cart_services'
+function getCartStorageKey(userEmail?: string | null) {
+  return userEmail ? `autocare_cart_services_${userEmail}` : 'autocare_cart_services_guest'
+}
 
 export default function CartPage() {
   const navigate = useNavigate()
@@ -14,7 +16,9 @@ export default function CartPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const executePromise = async () => {
-    const stored = window.localStorage.getItem(CART_STORAGE_KEY)
+    const userEmail = window.localStorage.getItem('auth_email') ?? ''
+    const cartStorageKey = getCartStorageKey(userEmail)
+    const stored = window.localStorage.getItem(cartStorageKey)
     if (!stored) {
     setServices([])
       return
@@ -30,14 +34,18 @@ export default function CartPage() {
   }, [])
 
   function clearCart() {
-    window.localStorage.removeItem(CART_STORAGE_KEY)
+    const userEmail = window.localStorage.getItem('auth_email') ?? ''
+    const cartStorageKey = getCartStorageKey(userEmail)
+    window.localStorage.removeItem(cartStorageKey)
     setServices([])
   }
 
   function removeServiceFromCart(index: number) {
     if (typeof window === 'undefined') return
 
-    const stored = window.localStorage.getItem(CART_STORAGE_KEY)
+    const userEmail = window.localStorage.getItem('auth_email') ?? ''
+    const cartStorageKey = getCartStorageKey(userEmail)
+    const stored = window.localStorage.getItem(cartStorageKey)
     if (!stored) {
       setServices([])
       return
@@ -47,7 +55,7 @@ export default function CartPage() {
       const parsed = JSON.parse(stored)
       const currentServices: ServiceItem[] = Array.isArray(parsed) ? parsed : []
       const nextServices = currentServices.filter((_, itemIndex) => itemIndex !== index)
-      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(nextServices))
+      window.localStorage.setItem(cartStorageKey, JSON.stringify(nextServices))
       setServices(nextServices)
     } catch {
       setServices([])
