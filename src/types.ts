@@ -10,3 +10,5 @@ export interface RegisterFormState {
   password: string
   confirmPassword: string
 }
+
+export type UserRole = 'Admin' | 'Technician' | 'Customer'

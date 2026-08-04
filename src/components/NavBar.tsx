@@ -5,8 +5,10 @@ import { LogOut, ShoppingBag } from 'lucide-react'
 import { RoutesBar } from './Routes'
 
 export default function NavBar() {
-  const { isAuthenticated, userEmail, signOut } = useAuth()
-    const navigate = useNavigate()
+  const { isAuthenticated, userEmail, role, signOut } = useAuth()
+  const navigate = useNavigate()
+  const isAdmin = role === 'Admin'
+  const isTechnician = role === 'Technician'
 
   
 
@@ -28,9 +30,11 @@ export default function NavBar() {
 
             
           
-            <BorderButton onClick={() => navigate('/cart')} type="button">
-              <ShoppingBag size={16}></ShoppingBag>
-            </BorderButton>
+            {(isAdmin || isTechnician) ? null : (
+              <BorderButton onClick={() => navigate('/cart')} type="button">
+                <ShoppingBag size={16}></ShoppingBag>
+              </BorderButton>
+            )}
             
             
             
@@ -38,7 +42,10 @@ export default function NavBar() {
 
               <LogOut size={16}></LogOut>
             </BorderButton>
-            <span className="text-gray-200 ">{userEmail}</span>
+            <div className="flex flex-col items-end">
+              <span className="text-gray-200 text-sm">{userEmail}</span>
+              <span className="text-[11px] uppercase tracking-wide text-gray-400">{role ?? 'Sin Rol'}</span>
+            </div>
           </div>
         ) : (
           <Link to="/login" className="button-secondary">

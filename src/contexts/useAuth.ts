@@ -1,9 +1,10 @@
 import { createContext, useContext } from "react"
-import type { LoginFormState, RegisterFormState } from "../types"
+import type { LoginFormState, RegisterFormState, UserRole } from "../types"
 
 interface AuthContextValue {
   isAuthenticated: boolean
   userEmail: string
+  role: UserRole | null
   signIn: (form: LoginFormState) => Promise<void>
   signUp: (form: RegisterFormState) => Promise<void>
   signOut: () => void
