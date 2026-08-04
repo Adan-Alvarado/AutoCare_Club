@@ -1,10 +1,12 @@
 import { Link, useLocation } from "react-router";
 
 export const RoutesBar = () => {
+
+
   return (
     <div className="space-x-4 flex flex-row items-center justify-around md:justify-center gap-4">
-            <NavButton to="/services">Servicios</NavButton>
-            <NavButton to="/vehicles">Vehículos</NavButton>
+      <NavButton to="/services">Servicios</NavButton>
+      <NavButton to="/vehicles">Vehículos</NavButton>
     </div>
   )
 }

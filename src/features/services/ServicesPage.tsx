@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useAuth } from '../../contexts/useAuth'
 import { createService, getServices } from '../../services/api'
 import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
@@ -20,6 +21,8 @@ const initialServiceForm = {
 }
 
 export default function ServicesPage() {
+  const { role } = useAuth()
+  const isAdmin = role === 'Admin'
   const [services, setServices] = useState<ServiceItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -106,9 +109,11 @@ export default function ServicesPage() {
           <h1 className="text-4xl font-bold text-gray-200 mb-4">Servicios disponibles</h1>
         </div>
         <div className="flex gap-2">
-          <FilledButton onClick={() => setIsCreateOpen(true)}>
-            Crear servicio
-          </FilledButton>
+          {isAdmin ? (
+            <FilledButton onClick={() => setIsCreateOpen(true)}>
+              Crear servicio
+            </FilledButton>
+          ) : null}
           <FilledButton onClick={() => void loadServices()} disabled={loading}>
             Actualizar
           </FilledButton>
