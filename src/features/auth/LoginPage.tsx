@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../../contexts/useAuth'
 import type { LoginFormState } from '../../types'
+import { FilledButton } from '../../components/Buttons'
 
 const initialForm: LoginFormState = {
   email: '',
@@ -71,9 +72,9 @@ export default function LoginPage() {
             />
           </label>
           <div className="h-4"></div>
-          <button type="submit" disabled={loading} className="w-full flex flex-row items-center justify-center gap-2">
+          <FilledButton type="submit" disabled={loading} className="w-full flex flex-row items-center justify-center gap-2">
               {loading ? 'Ingresando...' : 'Iniciar sesión'}
-          </button>
+          </FilledButton>
         </form> 
         
 
