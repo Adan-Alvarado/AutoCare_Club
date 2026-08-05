@@ -1,110 +1,271 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import type { ServiceItem } from '../../services/api'
-import { BorderButton, FilledButton } from '../../components/Buttons'
-import { ThemedPanel } from '../../components/Panel'
-import { Trash } from 'lucide-react'
-
-const CART_STORAGE_KEY = 'autocare_cart_services'
+import Loading from '../../components/Loading'
+import {
+  checkoutCart,
+  createAppointment,
+  deleteCartItem,
+  getAvailableSchedules,
+  getCart,
+  getServices,
+  getVehicles,
+  updateCartItem,
+  type OrderDto,
+  type ScheduleAvailabilityDto,
+  type ServiceItem,
+  type VehicleDto,
+} from '../../services/api'
+import { stepTitles, type CheckoutStep } from './cart.types'
+import { localDate } from './cart.utils'
+import CartItemsStep from './components/CartItemsStep'
+import CartModal from './components/CartModal'
+import ConfirmationStep from './components/ConfirmationStep'
+import OrderSummary from './components/OrderSummary'
+import PaymentStep from './components/PaymentStep'
+import ScheduleStep from './components/ScheduleStep'
+import VehicleStep from './components/VehicleStep'
 
 export default function CartPage() {
   const navigate = useNavigate()
-  const [services, setServices] = useState<ServiceItem[]>([])
+  const [step, setStep] = useState<CheckoutStep>('cart')
+  const [cart, setCart] = useState<OrderDto | null>(null)
+  const [catalog, setCatalog] = useState<ServiceItem[]>([])
+  const [vehicles, setVehicles] = useState<VehicleDto[]>([])
+  const [selectedVehicleId, setSelectedVehicleId] = useState('')
+  const [selectedDate, setSelectedDate] = useState(localDate(1))
+  const [selectedSlot, setSelectedSlot] = useState<ScheduleAvailabilityDto | null>(null)
+  const [slots, setSlots] = useState<ScheduleAvailabilityDto[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [completedOrder, setCompletedOrder] = useState<OrderDto | null>(null)
+
+  const selectedVehicle = vehicles.find((vehicle) => vehicle.id === selectedVehicleId)
+  const displayCart = completedOrder ?? cart
+
+  const totalMinutes = useMemo(() => {
+    if (!cart) return 0
+    return cart.items.reduce((total, item) => {
+      const service = catalog.find((entry) => entry.id === item.serviceId)
+      return total + (service?.durationMinutes ?? 0) * item.quantity
+    }, 0)
+  }, [cart, catalog])
+
+  async function changeQuantity(itemId: string, quantity: number) {
+    if (quantity < 1 || quantity > 10) return
+    setSaving(true)
+    setError('')
+
+    try {
+      setCart(await updateCartItem(itemId, quantity))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar el carrito')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function removeItem(itemId: string) {
+    setSaving(true)
+    setError('')
+
+    try {
+      await deleteCartItem(itemId)
+      setCart(await getCart())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el servicio')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function clearCart() {
+    if (!cart) return
+    setSaving(true)
+    setError('')
+
+    try {
+      for (const item of cart.items) {
+        await deleteCartItem(item.id)
+      }
+      setCart(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo vaciar el carrito')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function continueFromCart() {
+    setLoading(true)
+    setError('')
+
+    try {
+      const data = await getVehicles()
+      setVehicles(data.filter((vehicle) => vehicle.isActive))
+      setStep('vehicle')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar tus vehículos')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadSchedules(date: string) {
+    const serviceId = cart?.items[0]?.serviceId
+    if (!serviceId || !date) return
+
+    setLoadingSlots(true)
+    setSelectedSlot(null)
+    setError('')
+
+    try {
+      setSlots(await getAvailableSchedules(serviceId, date))
+    } catch (err) {
+      setSlots([])
+      setError(err instanceof Error ? err.message : 'No se pudieron cargar los horarios')
+    } finally {
+      setLoadingSlots(false)
+    }
+  }
+
+  function continueToSchedule() {
+    setStep('schedule')
+    void loadSchedules(selectedDate)
+  }
+
+  function changeDate(date: string) {
+    setSelectedDate(date)
+    void loadSchedules(date)
+  }
+
+  async function confirmReservation() {
+    const serviceId = cart?.items[0]?.serviceId
+    if (!cart || !serviceId || !selectedVehicleId || !selectedSlot) return
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const appointment = await createAppointment({
+        vehicleId: selectedVehicleId,
+        serviceId,
+        appointmentDate: selectedDate,
+        startTime: selectedSlot.startTime,
+        notes: cart.items.length > 1
+          ? `Orden con ${cart.items.length} servicios. Horario calculado a partir del servicio principal.`
+          : undefined,
+      })
+      const order = await checkoutCart(selectedVehicleId, appointment.id)
+      setCompletedOrder(order)
+      setStep('confirmation')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo confirmar la reserva')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function goBack() {
+    const previousStep: Partial<Record<CheckoutStep, CheckoutStep>> = {
+      vehicle: 'cart',
+      schedule: 'vehicle',
+      payment: 'schedule',
+    }
+    const previous = previousStep[step]
+    if (previous) setStep(previous)
+  }
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    const executePromise = async () => {
-    const stored = window.localStorage.getItem(CART_STORAGE_KEY)
-    if (!stored) {
-    setServices([])
-      return
-    }
+    let active = true
 
-    try {
-      const parsed = JSON.parse(stored)
-      setServices(Array.isArray(parsed) ? parsed : [])
-    } catch {
-      setServices([])
-    }}
-    executePromise()
+    void Promise.all([getCart(), getServices()])
+      .then(([cartData, servicesData]) => {
+        if (!active) return
+        setCart(cartData)
+        setCatalog(servicesData)
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : 'No se pudo cargar el carrito')
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
   }, [])
 
-  function clearCart() {
-    window.localStorage.removeItem(CART_STORAGE_KEY)
-    setServices([])
-  }
-
-  function removeServiceFromCart(index: number) {
-    if (typeof window === 'undefined') return
-
-    const stored = window.localStorage.getItem(CART_STORAGE_KEY)
-    if (!stored) {
-      setServices([])
-      return
-    }
-
-    try {
-      const parsed = JSON.parse(stored)
-      const currentServices: ServiceItem[] = Array.isArray(parsed) ? parsed : []
-      const nextServices = currentServices.filter((_, itemIndex) => itemIndex !== index)
-      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(nextServices))
-      setServices(nextServices)
-    } catch {
-      setServices([])
-    }
-  }
-
   return (
-    <main className="content-page m-8">
-      <div className="page-header">
-        <div>
-          <p className="eyebrow">Reserva</p>
-          <h1 className="text-4xl font-bold text-gray-200 mb-4">Carrito</h1>
-        </div>
-        <div className="flex justify-between items-center">
-            <div className="flex gap-2">
-                <FilledButton onClick={() => navigate('/services')}>Regresa a los servicios</FilledButton>
-                <BorderButton onClick={clearCart} >
-                    Vaciar carrito
-                </BorderButton>
-            </div>
-            <div className="flex flex-row gap-4 p-1 items-center justify-center border border-gray-800 rounded-2xl">
-                <span className="text-gray-200 mx-5">Total: ${services.reduce((total, service) => total + service.price, 0).toFixed(2)}</span>
-                <span className="h-4 w-px bg-gray-800"></span>
-                <FilledButton >
-                    Proceder al pago
-                </FilledButton>
-            </div>
-          
-          
-
-        </div>
-      </div>
-
-      {services.length === 0 ? (
-        <ThemedPanel className="mt-4 flex flex-col gap-2 w-full items-center justify-center">
-          <p className="text-gray-300 font-bold text-2xl">Tu carrito está vacío.</p>
-        </ThemedPanel>
-      ) : (
-        <div className="service-grid grid gap-4 mt-4 grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
-          {services.map((service, index) => (
-            <article key={`${service.id}-${index}`} className="service-card mb-4">
-              <ThemedPanel className="flex flex-col gap-2 w-full">
-                <h2 className="text-xl font-bold text-gray-200">{service.name}</h2>
-                <p className="text-gray-300">{service.description}</p>
-                <div className="flex justify-between items-center mt-4">
-                  <span className="text-gray-400">{service.durationMinutes} min</span>
-                  <span className="text-lg font-bold text-green-200">${service.price.toFixed(2)}</span>
-                </div>
-                <BorderButton onClick={() => removeServiceFromCart(index)} className="mt-2 gap-2  w-full">
-                    <Trash size={16}></Trash>
-                  Eliminar
-                </BorderButton>
-              </ThemedPanel>
-            </article>
-          ))}
-        </div>
+    <CartModal
+      title={stepTitles[step]}
+      showBack={step !== 'cart' && step !== 'confirmation'}
+      error={error}
+      onBack={goBack}
+      onClose={() => navigate('/services')}
+      summary={(
+        <OrderSummary
+          cart={displayCart}
+          vehicle={selectedVehicle}
+          date={selectedDate}
+          slot={selectedSlot}
+          totalMinutes={totalMinutes}
+        />
       )}
-    </main>
+    >
+      {loading ? <Loading /> : null}
+
+      {!loading && step === 'cart' ? (
+        <CartItemsStep
+          cart={cart}
+          saving={saving}
+          onBrowseServices={() => navigate('/services')}
+          onChangeQuantity={(itemId, quantity) => void changeQuantity(itemId, quantity)}
+          onRemove={(itemId) => void removeItem(itemId)}
+          onClear={() => void clearCart()}
+          onContinue={() => void continueFromCart()}
+        />
+      ) : null}
+
+      {!loading && step === 'vehicle' ? (
+        <VehicleStep
+          vehicles={vehicles}
+          selectedVehicleId={selectedVehicleId}
+          onSelect={setSelectedVehicleId}
+          onContinue={continueToSchedule}
+          onAddVehicle={() => navigate('/vehicles')}
+        />
+      ) : null}
+
+      {step === 'schedule' ? (
+        <ScheduleStep
+          date={selectedDate}
+          minimumDate={localDate()}
+          slots={slots}
+          selectedSlot={selectedSlot}
+          loading={loadingSlots}
+          onDateChange={changeDate}
+          onSelectSlot={setSelectedSlot}
+          onContinue={() => setStep('payment')}
+        />
+      ) : null}
+
+      {step === 'payment' ? (
+        <PaymentStep saving={saving} onConfirm={() => void confirmReservation()} />
+      ) : null}
+
+      {step === 'confirmation' && selectedSlot ? (
+        <ConfirmationStep
+          date={selectedDate}
+          startTime={selectedSlot.startTime}
+          orderId={completedOrder?.id}
+          onFinish={() => navigate('/services')}
+        />
+      ) : null}
+    </CartModal>
   )
 }

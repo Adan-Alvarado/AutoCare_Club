@@ -33,6 +33,46 @@ export interface VehicleForm {
   vehicleType: string
 }
 
+export interface CartItemDto {
+  id: string
+  serviceId: string
+  serviceName: string
+  quantity: number
+  unitPrice: number
+  subtotal: number
+}
+
+export interface OrderDto {
+  id: string
+  vehicleId: string | null
+  appointmentId: string | null
+  total: number
+  status: string
+  paymentStatus: string
+  paidAt: string | null
+  createdAt: string
+  items: CartItemDto[]
+}
+
+export interface ScheduleAvailabilityDto {
+  serviceId: string
+  date: string
+  startTime: string
+  endTime: string
+}
+
+export interface AppointmentCreateData {
+  vehicleId: string
+  serviceId: string
+  appointmentDate: string
+  startTime: string
+  notes?: string
+}
+
+export interface AppointmentActionResponseDto {
+  id: string
+}
+
 export async function loginUser(email: string, password: string): Promise<LoginResponseData> {
   const result = await httpRequest<LoginResponseData>('/api/auth/login', {
     method: 'POST',
@@ -96,4 +136,96 @@ export async function deleteVehicle(id: string): Promise<void> {
   if (!result.status && result.statusCode !== 204) {
     throw new Error(result.message || 'No se pudo eliminar el vehículo')
   }
+}
+
+export async function getCart(): Promise<OrderDto | null> {
+  try {
+    const result = await httpRequest<OrderDto>('/api/cart', {
+      method: 'GET',
+    })
+
+    return result.data
+  } catch (error) {
+    if (error instanceof Error && error.message === 'No hay un carrito activo.') {
+      return null
+    }
+
+    throw error
+  }
+}
+
+export async function addCartItem(serviceId: string, quantity = 1): Promise<OrderDto> {
+  const result = await httpRequest<OrderDto>('/api/cart/items', {
+    method: 'POST',
+    body: JSON.stringify({ serviceId, quantity }),
+  })
+
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo agregar el servicio al carrito')
+  }
+
+  return result.data
+}
+
+export async function updateCartItem(id: string, quantity: number): Promise<OrderDto> {
+  const result = await httpRequest<OrderDto>(`/api/cart/items/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ quantity }),
+  })
+
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo actualizar la cantidad')
+  }
+
+  return result.data
+}
+
+export async function deleteCartItem(id: string): Promise<void> {
+  await httpRequest<void>(`/api/cart/items/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function getAvailableSchedules(
+  serviceId: string,
+  date: string,
+): Promise<ScheduleAvailabilityDto[]> {
+  const params = new URLSearchParams({ serviceId, date })
+  const result = await httpRequest<ScheduleAvailabilityDto[]>(
+    `/api/schedules/available?${params.toString()}`,
+    { method: 'GET' },
+  )
+
+  return result.data ?? []
+}
+
+export async function createAppointment(
+  data: AppointmentCreateData,
+): Promise<AppointmentActionResponseDto> {
+  const result = await httpRequest<AppointmentActionResponseDto>('/api/appointments', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo crear la cita')
+  }
+
+  return result.data
+}
+
+export async function checkoutCart(
+  vehicleId: string,
+  appointmentId: string,
+): Promise<OrderDto> {
+  const result = await httpRequest<OrderDto>('/api/cart/checkout', {
+    method: 'POST',
+    body: JSON.stringify({ vehicleId, appointmentId }),
+  })
+
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo confirmar la orden')
+  }
+
+  return result.data
 }
