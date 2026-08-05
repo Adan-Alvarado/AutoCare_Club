@@ -1,12 +1,14 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../contexts/useAuth'
-import { addCartItem, createService, getServices } from '../../services/api'
+import { addCartItem, createService, deleteService, getServices, updateService } from '../../services/api'
 import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import type { ServiceItem } from '../../services/api'
 import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
-import { Plus } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { queryKeys } from '../../services/queryKeys'
 
 const initialServiceForm = {
   name: '',
@@ -18,36 +20,29 @@ const initialServiceForm = {
 export default function ServicesPage() {
   const { role } = useAuth()
   const isAdmin = role === 'Admin'
-  const [services, setServices] = useState<ServiceItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
-  const [addingServiceId, setAddingServiceId] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState(initialServiceForm)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [editingService, setEditingService] = useState<ServiceItem | null>(null)
+  const queryClient = useQueryClient()
+  const servicesQuery = useQuery({ queryKey: queryKeys.services, queryFn: getServices })
+  const saveServiceMutation = useMutation({
+    mutationFn: ({ service, payload }: { service: ServiceItem | null; payload: Parameters<typeof createService>[0] }) => (
+      service
+        ? updateService(service.id, { ...payload, isActive: service.isActive })
+        : createService(payload)
+    ),
+  })
+  const deleteServiceMutation = useMutation({ mutationFn: (id: string) => deleteService(id) })
+  const addCartMutation = useMutation({ mutationFn: (service: ServiceItem) => addCartItem(service.id) })
+  const services = servicesQuery.data ?? []
+  const loading = servicesQuery.isLoading
+  const submitting = saveServiceMutation.isPending || deleteServiceMutation.isPending
+  const addingServiceId = addCartMutation.isPending ? addCartMutation.variables?.id ?? null : null
 
-  useEffect(() => {
-    void loadServices()
-  }, [])
-
-  async function loadServices() {
-    setLoading(true)
-    setError('')
-
-    try {
-      const data = await getServices()
-      setServices(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar los servicios')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleCreateService(event: FormEvent<HTMLFormElement>) {
+  async function handleSaveService(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setSubmitting(true)
     setError('')
     setFeedback('')
 
@@ -60,29 +55,62 @@ export default function ServicesPage() {
         imageUrl: form.imageUrl.trim() ? form.imageUrl.trim() : null,
       }
 
-      await createService(payload)
+      await saveServiceMutation.mutateAsync({ service: editingService, payload })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.services })
       setForm(initialServiceForm)
       setIsCreateOpen(false)
-      setFeedback('Servicio creado correctamente.')
-      await loadServices()
+      setEditingService(null)
+      setFeedback(editingService ? 'Servicio actualizado correctamente.' : 'Servicio creado correctamente.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear el servicio')
-    } finally {
-      setSubmitting(false)
+    }
+  }
+
+  function openCreate() {
+    setEditingService(null)
+    setForm(initialServiceForm)
+    setIsCreateOpen(true)
+  }
+
+  function openEdit(service: ServiceItem) {
+    setEditingService(service)
+    setForm({
+      name: service.name,
+      description: service.description,
+      price: String(service.price),
+      durationMinutes: String(service.durationMinutes),
+      imageUrl: service.imageUrl ?? '',
+    })
+    setIsCreateOpen(true)
+  }
+
+  function closeForm() {
+    setIsCreateOpen(false)
+    setEditingService(null)
+    setForm(initialServiceForm)
+  }
+
+  async function handleDelete(service: ServiceItem) {
+    if (!window.confirm(`¿Eliminar el servicio ${service.name}?`)) return
+    setError('')
+    try {
+      await deleteServiceMutation.mutateAsync(service.id)
+      setFeedback('Servicio eliminado correctamente.')
+      await queryClient.invalidateQueries({ queryKey: queryKeys.services })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el servicio')
     }
   }
 
   async function addServiceToCart(service: ServiceItem) {
-    setAddingServiceId(service.id)
     setFeedback('')
 
     try {
-      await addCartItem(service.id)
+      await addCartMutation.mutateAsync(service)
+      await queryClient.invalidateQueries({ queryKey: queryKeys.cart })
       setFeedback(`${service.name} agregado al carrito.`)
     } catch (err) {
       setFeedback(err instanceof Error ? err.message : 'No se pudo agregar el servicio')
-    } finally {
-      setAddingServiceId(null)
     }
   }
 
@@ -95,11 +123,11 @@ export default function ServicesPage() {
         </div>
         <div className="flex gap-2">
           {isAdmin ? (
-            <FilledButton onClick={() => setIsCreateOpen(true)}>
+            <FilledButton onClick={openCreate}>
               Crear servicio
             </FilledButton>
           ) : null}
-          <FilledButton onClick={() => void loadServices()} disabled={loading}>
+          <FilledButton onClick={() => void servicesQuery.refetch()} disabled={servicesQuery.isFetching}>
             Actualizar
           </FilledButton>
         </div>
@@ -110,19 +138,19 @@ export default function ServicesPage() {
           <div className="w-full max-w-2xl rounded-2xl border border-gray-800 bg-gray-950 p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold text-gray-200">Crear servicio</h2>
-                <p className="text-sm text-gray-400">Completa los datos para agregar un nuevo servicio al catálogo.</p>
+                <h2 className="text-xl font-semibold text-gray-200">{editingService ? 'Editar servicio' : 'Crear servicio'}</h2>
+                <p className="text-sm text-gray-400">Completa los datos del servicio que aparecerá en el catálogo.</p>
               </div>
               <button
                 type="button"
-                onClick={() => setIsCreateOpen(false)}
+                onClick={closeForm}
                 className="rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300"
               >
                 Cerrar
               </button>
             </div>
 
-            <form onSubmit={handleCreateService} className="flex flex-col gap-3">
+            <form onSubmit={handleSaveService} className="flex flex-col gap-3">
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="flex flex-col gap-1 text-sm text-gray-300">
                   Nombre
@@ -185,13 +213,13 @@ export default function ServicesPage() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsCreateOpen(false)}
+                  onClick={closeForm}
                   className="rounded-xl border border-gray-700 px-4 py-2 text-sm text-gray-300"
                 >
                   Cancelar
                 </button>
                 <FilledButton type="submit" disabled={submitting}>
-                  {submitting ? 'Guardando...' : 'Crear servicio'}
+                  {submitting ? 'Guardando...' : editingService ? 'Guardar cambios' : 'Crear servicio'}
                 </FilledButton>
               </div>
             </form>
@@ -205,8 +233,8 @@ export default function ServicesPage() {
 
       {loading ? (
         <Loading />
-      ) : error ? (
-        <p className="error">{error}</p>
+      ) : error || servicesQuery.error ? (
+        <p className="error">{error || (servicesQuery.error instanceof Error ? servicesQuery.error.message : 'No se pudieron cargar los servicios')}</p>
       ) : services.length === 0 ? (
         <EmptyState message="No hay servicios disponibles." />
       ) : (
@@ -221,14 +249,25 @@ export default function ServicesPage() {
               <div className='h-10'></div>
               <div className="service-meta flex flex-row justify-between items-center mt-2 gap-10">
                 <span className="text-lg font-bold text-green-200">${service.price.toFixed(2)}</span>
-                <FilledButton
-                  onClick={() => void addServiceToCart(service)}
-                  disabled={addingServiceId === service.id}
-                >
-                  <span className="flex flex-row items-center gap-1">
-                  <Plus size={16}></Plus>
-                  {addingServiceId === service.id ? 'Agregando...' : 'Reservar'}
-                  </span></FilledButton>
+                {isAdmin ? (
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => openEdit(service)} className="rounded-xl border border-gray-700 p-3 text-gray-200 hover:bg-gray-800" aria-label={`Editar ${service.name}`}>
+                      <Pencil size={16} />
+                    </button>
+                    <button type="button" onClick={() => void handleDelete(service)} disabled={submitting} className="rounded-xl border border-red-900 p-3 text-red-300 hover:bg-red-950" aria-label={`Eliminar ${service.name}`}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <FilledButton
+                    onClick={() => void addServiceToCart(service)}
+                    disabled={addingServiceId === service.id}
+                  >
+                    <span className="flex flex-row items-center gap-1">
+                    <Plus size={16}></Plus>
+                    {addingServiceId === service.id ? 'Agregando...' : 'Reservar'}
+                    </span></FilledButton>
+                )}
               </div>
               </ThemedPanel>
             </article>

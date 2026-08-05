@@ -1,10 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createVehicle, deleteVehicle, getVehicles, updateVehicle } from '../../services/api'
 import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import type { VehicleDto } from '../../services/api'
 import { BorderButton, FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
+import { queryKeys } from '../../services/queryKeys'
 
 
 const initialForm = {
@@ -15,30 +17,20 @@ const initialForm = {
 }
 
 export default function VehiclesPage() {
-  const [vehicles, setVehicles] = useState<VehicleDto[]>([])
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleDto | null>(null)
   const [form, setForm] = useState(initialForm)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    void loadVehicles()
-  }, [])
-
-  async function loadVehicles() {
-    setLoading(true)
-    setError('')
-
-    try {
-      const data = await getVehicles()
-      setVehicles(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar los vehículos')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const queryClient = useQueryClient()
+  const vehiclesQuery = useQuery({ queryKey: queryKeys.vehicles, queryFn: getVehicles })
+  const saveVehicleMutation = useMutation({
+    mutationFn: ({ id, data }: { id?: string; data: typeof form }) => (
+      id ? updateVehicle(id, data) : createVehicle(data)
+    ),
+  })
+  const deleteVehicleMutation = useMutation({ mutationFn: (id: string) => deleteVehicle(id) })
+  const vehicles = vehiclesQuery.data ?? []
+  const loading = vehiclesQuery.isLoading
+  const saving = saveVehicleMutation.isPending || deleteVehicleMutation.isPending
 
   function startEdit(vehicle: VehicleDto) {
     setSelectedVehicle(vehicle)
@@ -58,38 +50,28 @@ export default function VehiclesPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setSaving(true)
     setError('')
 
     try {
-      if (selectedVehicle) {
-        await updateVehicle(selectedVehicle.id, form)
-      } else {
-        await createVehicle(form)
-      }
-      await loadVehicles()
+      await saveVehicleMutation.mutateAsync({ id: selectedVehicle?.id, data: form })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.vehicles })
       resetForm()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar el vehículo')
-    } finally {
-      setSaving(false)
     }
   }
 
   async function handleDelete(id: string) {
-    setSaving(true)
     setError('')
 
     try {
-      await deleteVehicle(id)
-      await loadVehicles()
+      await deleteVehicleMutation.mutateAsync(id)
+      await queryClient.invalidateQueries({ queryKey: queryKeys.vehicles })
       if (selectedVehicle?.id === id) {
         resetForm()
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo eliminar el vehículo')
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -166,6 +148,8 @@ export default function VehiclesPage() {
           
           {loading ? (
             <Loading />
+          ) : vehiclesQuery.error ? (
+            <p className="error">{vehiclesQuery.error instanceof Error ? vehiclesQuery.error.message : 'No se pudieron cargar los vehículos'}</p>
           ) : vehicles.length === 0 ? (
             <EmptyState message="No hay vehículos registrados." />
           ) : (

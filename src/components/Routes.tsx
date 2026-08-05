@@ -1,12 +1,16 @@
 import { Link, useLocation } from "react-router";
+import { useAuth } from '../contexts/useAuth'
 
 export const RoutesBar = () => {
-
+  const { role } = useAuth()
 
   return (
     <div className="space-x-4 flex flex-row items-center justify-around md:justify-center gap-4">
       <NavButton to="/services">Servicios</NavButton>
-      <NavButton to="/vehicles">Vehículos</NavButton>
+      {role === 'Customer' ? <NavButton to="/vehicles">Vehículos</NavButton> : null}
+      {role === 'Admin' ? <NavButton to="/admin/appointments">Citas</NavButton> : null}
+      {role === 'Admin' ? <NavButton to="/admin/roles">Roles</NavButton> : null}
+      {role === 'Technician' ? <NavButton to="/technician/appointments">Mis citas</NavButton> : null}
     </div>
   )
 }

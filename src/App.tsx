@@ -8,6 +8,9 @@ import RegisterPage from './features/auth/RegisterPage'
 import ServicesPage from './features/services/ServicesPage'
 import VehiclesPage from './features/vehicles/VehiclesPage'
 import CartPage from './features/cart/CartPage'
+import AdminAppointmentsPage from './features/admin/AdminAppointmentsPage'
+import RolesPage from './features/admin/RolesPage'
+import TechnicianAppointmentsPage from './features/technician/TechnicianAppointmentsPage'
 
 function App() {
   return (
@@ -26,6 +29,9 @@ function App() {
                     <Route path="services" element={<ServicesPage />} />
                     <Route path="vehicles" element={<VehiclesPage />} />
                     <Route path="cart" element={<CartPage />} />
+                    <Route path="admin/appointments" element={<AdminAppointmentsPage />} />
+                    <Route path="admin/roles" element={<RolesPage />} />
+                    <Route path="technician/appointments" element={<TechnicianAppointmentsPage />} />
                     <Route path="" element={<Navigate to="services" replace />} />
                   </Routes>
                 </AppLayout>

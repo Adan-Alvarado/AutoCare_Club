@@ -28,6 +28,10 @@ export interface ServiceCreatePayload {
   imageUrl?: string | null
 }
 
+export interface ServiceEditPayload extends ServiceCreatePayload {
+  isActive: boolean
+}
+
 export interface VehicleDto {
   id: string
   userId: string
@@ -85,6 +89,67 @@ export interface AppointmentActionResponseDto {
   id: string
 }
 
+export type AppointmentStatus = 'Pending' | 'Confirmed' | 'InProgress' | 'Completed' | 'Cancelled'
+
+export interface AppointmentDto {
+  id: string
+  userId: string
+  vehicleId: string
+  serviceId: string
+  technicianId: string | null
+  appointmentDate: string
+  startTime: string
+  endTime: string
+  status: AppointmentStatus
+  notes: string | null
+  createdAt: string
+}
+
+export interface AppointmentEditPayload extends AppointmentCreateData {
+  technicianId: string | null
+  status: AppointmentStatus
+}
+
+export interface PageDto<T> {
+  currentPage: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+  pageSize: number
+  totalItems: number
+  totalPages: number
+  items: T
+}
+
+export interface RoleDto {
+  id: string
+  name: string
+  description: string
+}
+
+export interface RolePayload {
+  name: string
+  description: string
+}
+
+export interface TechnicianDto {
+  userId: string
+  firstName: string
+  lastName: string
+  email: string
+  specialty: string
+  isActive: boolean
+  createdAt: string
+}
+
+export interface PaymentIntentDto {
+  paymentIntentId: string
+  clientSecret: string
+  publishableKey: string
+  amount: number
+  currency: string
+  status: string
+}
+
 export async function loginUser(email: string, password: string): Promise<LoginResponseData> {
   const result = await httpRequest<LoginResponseData>('/api/auth/login', {
     method: 'POST',
@@ -130,6 +195,26 @@ export async function createService(data: ServiceCreatePayload): Promise<Service
   }
 
   return result.data
+}
+
+export async function updateService(id: string, data: ServiceEditPayload): Promise<ServiceItem> {
+  const result = await httpRequest<ServiceItem>(`/api/services/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo actualizar el servicio')
+  }
+
+  return result.data
+}
+
+export async function deleteService(id: string): Promise<void> {
+  const result = await httpRequest<void>(`/api/services/${id}`, { method: 'DELETE' })
+  if (!result.status && result.statusCode !== 204) {
+    throw new Error(result.message || 'No se pudo eliminar el servicio')
+  }
 }
 
 export async function getVehicles(): Promise<VehicleDto[]> {
@@ -265,5 +350,83 @@ export async function checkoutCart(
     throw new Error(result.message || 'No se pudo confirmar la orden')
   }
 
+  return result.data
+}
+
+export async function getAppointments(): Promise<AppointmentDto[]> {
+  const result = await httpRequest<AppointmentDto[]>('/api/appointments', { method: 'GET' })
+  return result.data ?? []
+}
+
+export async function getTechnicianAppointments(): Promise<AppointmentDto[]> {
+  const result = await httpRequest<AppointmentDto[]>('/api/appointments/technician/me', { method: 'GET' })
+  return result.data ?? []
+}
+
+export async function updateAppointment(id: string, data: AppointmentEditPayload): Promise<void> {
+  const statusValues: Record<AppointmentStatus, number> = {
+    Pending: 0,
+    Confirmed: 1,
+    InProgress: 2,
+    Completed: 3,
+    Cancelled: 4,
+  }
+  const result = await httpRequest<AppointmentActionResponseDto>(`/api/appointments/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ ...data, status: statusValues[data.status] }),
+  })
+  if (!result.status) throw new Error(result.message || 'No se pudo actualizar la cita')
+}
+
+export async function updateTechnicianAppointmentStatus(id: string, status: AppointmentStatus): Promise<void> {
+  const result = await httpRequest<AppointmentActionResponseDto>(`/api/appointments/${id}/technician-status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+  if (!result.status) throw new Error(result.message || 'No se pudo actualizar el estado')
+}
+
+export async function getTechnicians(): Promise<TechnicianDto[]> {
+  const result = await httpRequest<PageDto<TechnicianDto[]>>('/api/technicians?page=1&pageSize=100&includeInactive=false', {
+    method: 'GET',
+  })
+  return result.data?.items ?? []
+}
+
+export async function getRoles(): Promise<RoleDto[]> {
+  const result = await httpRequest<PageDto<RoleDto[]>>('/api/role?page=1&pageSize=100', { method: 'GET' })
+  return result.data?.items ?? []
+}
+
+export async function createRole(data: RolePayload): Promise<void> {
+  const result = await httpRequest<{ id: string }>('/api/role', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+  if (!result.status) throw new Error(result.message || 'No se pudo crear el rol')
+}
+
+export async function updateRole(id: string, data: RolePayload): Promise<void> {
+  const result = await httpRequest<{ id: string }>(`/api/role/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+  if (!result.status) throw new Error(result.message || 'No se pudo actualizar el rol')
+}
+
+export async function deleteRole(id: string): Promise<void> {
+  const result = await httpRequest<void>(`/api/role/${id}`, { method: 'DELETE' })
+  if (!result.status && result.statusCode !== 204) {
+    throw new Error(result.message || 'No se pudo eliminar el rol')
+  }
+}
+
+export async function createPaymentIntent(orderId: string): Promise<PaymentIntentDto> {
+  const result = await httpRequest<PaymentIntentDto>(`/api/payments/orders/${orderId}/intent`, {
+    method: 'POST',
+  })
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo preparar el pago con tarjeta')
+  }
   return result.data
 }
