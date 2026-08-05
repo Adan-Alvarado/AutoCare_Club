@@ -6,6 +6,10 @@ export interface LoginResponseData {
   refreshToken: string
 }
 
+export interface RegisterResponseData {
+  id: string
+}
+
 export interface ServiceItem {
   id: string
   name: string
@@ -14,6 +18,14 @@ export interface ServiceItem {
   durationMinutes: number
   imageUrl?: string | null
   isActive: boolean
+}
+
+export interface ServiceCreatePayload {
+  name: string
+  description: string
+  price: number
+  durationMinutes: number
+  imageUrl?: string | null
 }
 
 export interface VehicleDto {
@@ -86,12 +98,38 @@ export async function loginUser(email: string, password: string): Promise<LoginR
   return result.data
 }
 
+export async function registerUser(firstName: string, lastName: string, email: string, password: string, confirmPassword: string): Promise<RegisterResponseData> {
+  const result = await httpRequest<RegisterResponseData>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ firstName, lastName, email, password, confirmPassword }),
+  })
+
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo crear la cuenta')
+  }
+
+  return result.data
+}
+
 export async function getServices(): Promise<ServiceItem[]> {
   const result = await httpRequest<ServiceItem[]>('/api/services', {
     method: 'GET',
   })
 
   return result.data ?? []
+}
+
+export async function createService(data: ServiceCreatePayload): Promise<ServiceItem> {
+  const result = await httpRequest<ServiceItem>('/api/services', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo crear el servicio')
+  }
+
+  return result.data
 }
 
 export async function getVehicles(): Promise<VehicleDto[]> {
