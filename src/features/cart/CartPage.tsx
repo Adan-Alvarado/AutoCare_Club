@@ -4,6 +4,7 @@ import Loading from '../../components/Loading'
 import {
   checkoutCart,
   createAppointment,
+  createPaymentIntent,
   deleteCartItem,
   getAvailableSchedules,
   getCart,
@@ -11,11 +12,12 @@ import {
   getVehicles,
   updateCartItem,
   type OrderDto,
+  type PaymentIntentDto,
   type ScheduleAvailabilityDto,
   type ServiceItem,
   type VehicleDto,
 } from '../../services/api'
-import { stepTitles, type CheckoutStep } from './cart.types'
+import { stepTitles, type CheckoutStep, type PaymentMethod } from './cart.types'
 import { localDate } from './cart.utils'
 import CartItemsStep from './components/CartItemsStep'
 import CartModal from './components/CartModal'
@@ -40,9 +42,12 @@ export default function CartPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [completedOrder, setCompletedOrder] = useState<OrderDto | null>(null)
+  const [pendingOrder, setPendingOrder] = useState<OrderDto | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('workshop')
+  const [paymentIntent, setPaymentIntent] = useState<PaymentIntentDto | null>(null)
 
   const selectedVehicle = vehicles.find((vehicle) => vehicle.id === selectedVehicleId)
-  const displayCart = completedOrder ?? cart
+  const displayCart = completedOrder ?? pendingOrder ?? cart
 
   const totalMinutes = useMemo(() => {
     if (!cart) return 0
@@ -140,31 +145,50 @@ export default function CartPage() {
     void loadSchedules(date)
   }
 
-  async function confirmReservation() {
+  async function prepareOrder() {
+    if (pendingOrder) return pendingOrder
     const serviceId = cart?.items[0]?.serviceId
-    if (!cart || !serviceId || !selectedVehicleId || !selectedSlot) return
+    if (!cart || !serviceId || !selectedVehicleId || !selectedSlot) return null
+
+    const appointment = await createAppointment({
+      vehicleId: selectedVehicleId,
+      serviceId,
+      appointmentDate: selectedDate,
+      startTime: selectedSlot.startTime,
+      notes: cart.items.length > 1
+        ? `Orden con ${cart.items.length} servicios. Horario calculado a partir del servicio principal.`
+        : undefined,
+    })
+    const order = await checkoutCart(selectedVehicleId, appointment.id)
+    setPendingOrder(order)
+    return order
+  }
+
+  async function confirmReservation() {
 
     setSaving(true)
     setError('')
 
     try {
-      const appointment = await createAppointment({
-        vehicleId: selectedVehicleId,
-        serviceId,
-        appointmentDate: selectedDate,
-        startTime: selectedSlot.startTime,
-        notes: cart.items.length > 1
-          ? `Orden con ${cart.items.length} servicios. Horario calculado a partir del servicio principal.`
-          : undefined,
-      })
-      const order = await checkoutCart(selectedVehicleId, appointment.id)
-      setCompletedOrder(order)
-      setStep('confirmation')
+      const order = await prepareOrder()
+      if (!order) return
+
+      if (paymentMethod === 'card') {
+        setPaymentIntent(await createPaymentIntent(order.id))
+      } else {
+        setCompletedOrder(order)
+        setStep('confirmation')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo confirmar la reserva')
     } finally {
       setSaving(false)
     }
+  }
+
+  function finishCardPayment() {
+    if (pendingOrder) setCompletedOrder(pendingOrder)
+    setStep('confirmation')
   }
 
   function goBack() {
@@ -203,7 +227,7 @@ export default function CartPage() {
   return (
     <CartModal
       title={stepTitles[step]}
-      showBack={step !== 'cart' && step !== 'confirmation'}
+      showBack={step !== 'cart' && step !== 'confirmation' && !pendingOrder}
       error={error}
       onBack={goBack}
       onClose={() => navigate('/services')}
@@ -255,7 +279,14 @@ export default function CartPage() {
       ) : null}
 
       {step === 'payment' ? (
-        <PaymentStep saving={saving} onConfirm={() => void confirmReservation()} />
+        <PaymentStep
+          saving={saving}
+          method={paymentMethod}
+          paymentIntent={paymentIntent}
+          onMethodChange={setPaymentMethod}
+          onConfirm={() => void confirmReservation()}
+          onPaymentSuccess={finishCardPayment}
+        />
       ) : null}
 
       {step === 'confirmation' && selectedSlot ? (

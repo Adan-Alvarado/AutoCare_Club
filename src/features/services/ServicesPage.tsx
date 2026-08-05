@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../../contexts/useAuth'
-import { addCartItem, createService, getServices } from '../../services/api'
+import { addCartItem, createService, deleteService, getServices, updateService } from '../../services/api'
 import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import type { ServiceItem } from '../../services/api'
 import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
-import { Plus } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 
 const initialServiceForm = {
   name: '',
@@ -26,6 +26,7 @@ export default function ServicesPage() {
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState(initialServiceForm)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [editingService, setEditingService] = useState<ServiceItem | null>(null)
 
   useEffect(() => {
     void loadServices()
@@ -45,7 +46,7 @@ export default function ServicesPage() {
     }
   }
 
-  async function handleCreateService(event: FormEvent<HTMLFormElement>) {
+  async function handleSaveService(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSubmitting(true)
     setError('')
@@ -60,13 +61,57 @@ export default function ServicesPage() {
         imageUrl: form.imageUrl.trim() ? form.imageUrl.trim() : null,
       }
 
-      await createService(payload)
+      if (editingService) {
+        await updateService(editingService.id, { ...payload, isActive: editingService.isActive })
+      } else {
+        await createService(payload)
+      }
       setForm(initialServiceForm)
       setIsCreateOpen(false)
-      setFeedback('Servicio creado correctamente.')
+      setEditingService(null)
+      setFeedback(editingService ? 'Servicio actualizado correctamente.' : 'Servicio creado correctamente.')
       await loadServices()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear el servicio')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function openCreate() {
+    setEditingService(null)
+    setForm(initialServiceForm)
+    setIsCreateOpen(true)
+  }
+
+  function openEdit(service: ServiceItem) {
+    setEditingService(service)
+    setForm({
+      name: service.name,
+      description: service.description,
+      price: String(service.price),
+      durationMinutes: String(service.durationMinutes),
+      imageUrl: service.imageUrl ?? '',
+    })
+    setIsCreateOpen(true)
+  }
+
+  function closeForm() {
+    setIsCreateOpen(false)
+    setEditingService(null)
+    setForm(initialServiceForm)
+  }
+
+  async function handleDelete(service: ServiceItem) {
+    if (!window.confirm(`¿Eliminar el servicio ${service.name}?`)) return
+    setSubmitting(true)
+    setError('')
+    try {
+      await deleteService(service.id)
+      setFeedback('Servicio eliminado correctamente.')
+      await loadServices()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el servicio')
     } finally {
       setSubmitting(false)
     }
@@ -95,7 +140,7 @@ export default function ServicesPage() {
         </div>
         <div className="flex gap-2">
           {isAdmin ? (
-            <FilledButton onClick={() => setIsCreateOpen(true)}>
+            <FilledButton onClick={openCreate}>
               Crear servicio
             </FilledButton>
           ) : null}
@@ -110,19 +155,19 @@ export default function ServicesPage() {
           <div className="w-full max-w-2xl rounded-2xl border border-gray-800 bg-gray-950 p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold text-gray-200">Crear servicio</h2>
-                <p className="text-sm text-gray-400">Completa los datos para agregar un nuevo servicio al catálogo.</p>
+                <h2 className="text-xl font-semibold text-gray-200">{editingService ? 'Editar servicio' : 'Crear servicio'}</h2>
+                <p className="text-sm text-gray-400">Completa los datos del servicio que aparecerá en el catálogo.</p>
               </div>
               <button
                 type="button"
-                onClick={() => setIsCreateOpen(false)}
+                onClick={closeForm}
                 className="rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300"
               >
                 Cerrar
               </button>
             </div>
 
-            <form onSubmit={handleCreateService} className="flex flex-col gap-3">
+            <form onSubmit={handleSaveService} className="flex flex-col gap-3">
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="flex flex-col gap-1 text-sm text-gray-300">
                   Nombre
@@ -185,13 +230,13 @@ export default function ServicesPage() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsCreateOpen(false)}
+                  onClick={closeForm}
                   className="rounded-xl border border-gray-700 px-4 py-2 text-sm text-gray-300"
                 >
                   Cancelar
                 </button>
                 <FilledButton type="submit" disabled={submitting}>
-                  {submitting ? 'Guardando...' : 'Crear servicio'}
+                  {submitting ? 'Guardando...' : editingService ? 'Guardar cambios' : 'Crear servicio'}
                 </FilledButton>
               </div>
             </form>
@@ -221,14 +266,25 @@ export default function ServicesPage() {
               <div className='h-10'></div>
               <div className="service-meta flex flex-row justify-between items-center mt-2 gap-10">
                 <span className="text-lg font-bold text-green-200">${service.price.toFixed(2)}</span>
-                <FilledButton
-                  onClick={() => void addServiceToCart(service)}
-                  disabled={addingServiceId === service.id}
-                >
-                  <span className="flex flex-row items-center gap-1">
-                  <Plus size={16}></Plus>
-                  {addingServiceId === service.id ? 'Agregando...' : 'Reservar'}
-                  </span></FilledButton>
+                {isAdmin ? (
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => openEdit(service)} className="rounded-xl border border-gray-700 p-3 text-gray-200 hover:bg-gray-800" aria-label={`Editar ${service.name}`}>
+                      <Pencil size={16} />
+                    </button>
+                    <button type="button" onClick={() => void handleDelete(service)} disabled={submitting} className="rounded-xl border border-red-900 p-3 text-red-300 hover:bg-red-950" aria-label={`Eliminar ${service.name}`}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <FilledButton
+                    onClick={() => void addServiceToCart(service)}
+                    disabled={addingServiceId === service.id}
+                  >
+                    <span className="flex flex-row items-center gap-1">
+                    <Plus size={16}></Plus>
+                    {addingServiceId === service.id ? 'Agregando...' : 'Reservar'}
+                    </span></FilledButton>
+                )}
               </div>
               </ThemedPanel>
             </article>

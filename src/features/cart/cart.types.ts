@@ -1,4 +1,5 @@
 export type CheckoutStep = 'cart' | 'vehicle' | 'schedule' | 'payment' | 'confirmation'
+export type PaymentMethod = 'workshop' | 'card'
 
 export const stepTitles: Record<CheckoutStep, string> = {
   cart: 'Tu carrito',
