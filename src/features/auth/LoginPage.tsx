@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../contexts/useAuth'
 import type { LoginFormState } from '../../types'
 import { FilledButton } from '../../components/Buttons'
@@ -75,6 +75,12 @@ export default function LoginPage() {
           <FilledButton type="submit" disabled={loading} className="w-full flex flex-row items-center justify-center gap-2">
               {loading ? 'Ingresando...' : 'Iniciar sesión'}
           </FilledButton>
+          <p className="text-sm text-gray-400">
+            ¿No tienes cuenta?{' '}
+            <Link to="/register" className="text-gray-200 underline">
+              Regístrate
+            </Link>
+          </p>
         </form> 
         
 

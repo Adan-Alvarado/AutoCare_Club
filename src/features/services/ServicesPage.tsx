@@ -1,16 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../../contexts/useAuth'
-import { createService, getServices } from '../../services/api'
+import { addCartItem, createService, getServices } from '../../services/api'
 import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import type { ServiceItem } from '../../services/api'
 import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
 import { Plus } from 'lucide-react'
-
-function getCartStorageKey(userEmail?: string | null) {
-  return userEmail ? `autocare_cart_services_${userEmail}` : 'autocare_cart_services_guest'
-}
 
 const initialServiceForm = {
   name: '',
@@ -19,7 +15,6 @@ const initialServiceForm = {
   durationMinutes: '',
   imageUrl: '',
 }
-
 export default function ServicesPage() {
   const { role } = useAuth()
   const isAdmin = role === 'Admin'
@@ -27,6 +22,7 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [addingServiceId, setAddingServiceId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState(initialServiceForm)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -76,29 +72,18 @@ export default function ServicesPage() {
     }
   }
 
-  function addServiceToCart(service: ServiceItem) {
-    if (typeof window === 'undefined') return
+  async function addServiceToCart(service: ServiceItem) {
+    setAddingServiceId(service.id)
+    setFeedback('')
 
-    const userEmail = window.localStorage.getItem('auth_email') ?? ''
-    const cartStorageKey = getCartStorageKey(userEmail)
-    const stored = window.localStorage.getItem(cartStorageKey)
-    let currentServices: ServiceItem[] = []
-
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored)
-        currentServices = Array.isArray(parsed) ? parsed : []
-      } catch {
-        currentServices = []
-      }
+    try {
+      await addCartItem(service.id)
+      setFeedback(`${service.name} agregado al carrito.`)
+    } catch (err) {
+      setFeedback(err instanceof Error ? err.message : 'No se pudo agregar el servicio')
+    } finally {
+      setAddingServiceId(null)
     }
-
-    // const alreadyAdded = currentServices.some((item) => item.id === service.id)
-    console.log(service.id, currentServices.map((item) => item.id))
-    const nextServices = [...currentServices, service]
-
-    window.localStorage.setItem(cartStorageKey, JSON.stringify(nextServices))
-    setFeedback(`${service.name} agregado al carrito.`)
   }
 
   return (
@@ -215,7 +200,7 @@ export default function ServicesPage() {
       ) : null}
 
       {feedback ? (
-        <p className="text-sm text-emerald-300 mb-4">{feedback}</p>
+        <p className="text-sm text-emerald-300 mb-4" role="status">{feedback}</p>
       ) : null}
 
       {loading ? (
@@ -236,10 +221,13 @@ export default function ServicesPage() {
               <div className='h-10'></div>
               <div className="service-meta flex flex-row justify-between items-center mt-2 gap-10">
                 <span className="text-lg font-bold text-green-200">${service.price.toFixed(2)}</span>
-                <FilledButton onClick={() => addServiceToCart(service)}>
+                <FilledButton
+                  onClick={() => void addServiceToCart(service)}
+                  disabled={addingServiceId === service.id}
+                >
                   <span className="flex flex-row items-center gap-1">
                   <Plus size={16}></Plus>
-                  Reservar
+                  {addingServiceId === service.id ? 'Agregando...' : 'Reservar'}
                   </span></FilledButton>
               </div>
               </ThemedPanel>

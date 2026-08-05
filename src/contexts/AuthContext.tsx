@@ -51,10 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAuthenticated(true)
       },
       async signUp(form: RegisterFormState) {
-        const registerData = await registerUser(form.firstName, form.lastName, form.email, form.password, form.confirmPassword)
-        const authData = registerData.token
-          ? registerData
-          : await loginUser(form.email, form.password)
+        await registerUser(form.firstName, form.lastName, form.email, form.password, form.confirmPassword)
+        const authData = await loginUser(form.email, form.password)
 
         localStorage.setItem('auth_token', authData.token)
         localStorage.setItem('auth_email', authData.email)
