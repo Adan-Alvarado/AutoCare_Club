@@ -1,43 +1,32 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
 import { createRole, deleteRole, getRoles, updateRole, type RoleDto } from '../../services/api'
+import { queryKeys } from '../../services/queryKeys'
 
 const emptyForm = { name: '', description: '' }
 
 export default function RolesPage() {
-  const [roles, setRoles] = useState<RoleDto[]>([])
   const [form, setForm] = useState(emptyForm)
   const [editing, setEditing] = useState<RoleDto | null>(null)
   const [formOpen, setFormOpen] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
-
-  async function loadRoles() {
-    setLoading(true)
-    setError('')
-    try {
-      setRoles(await getRoles())
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar los roles')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    let active = true
-    void getRoles()
-      .then((data) => { if (active) setRoles(data) })
-      .catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : 'No se pudieron cargar los roles') })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [])
+  const queryClient = useQueryClient()
+  const rolesQuery = useQuery({ queryKey: queryKeys.roles, queryFn: getRoles })
+  const saveMutation = useMutation({
+    mutationFn: ({ id, payload }: { id?: string; payload: typeof form }) => (
+      id ? updateRole(id, payload) : createRole(payload)
+    ),
+  })
+  const deleteMutation = useMutation({ mutationFn: (id: string) => deleteRole(id) })
+  const roles = rolesQuery.data ?? []
+  const loading = rolesQuery.isLoading
+  const saving = saveMutation.isPending || deleteMutation.isPending
 
   function closeForm() {
     setFormOpen(false)
@@ -53,35 +42,28 @@ export default function RolesPage() {
 
   async function saveRole(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setSaving(true)
     setError('')
     setFeedback('')
     try {
       const payload = { name: form.name.trim(), description: form.description.trim() }
-      if (editing) await updateRole(editing.id, payload)
-      else await createRole(payload)
+      await saveMutation.mutateAsync({ id: editing?.id, payload })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.roles })
       setFeedback(editing ? 'Rol actualizado correctamente.' : 'Rol creado correctamente.')
       closeForm()
-      await loadRoles()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar el rol')
-    } finally {
-      setSaving(false)
     }
   }
 
   async function removeRole(role: RoleDto) {
     if (!window.confirm(`¿Eliminar el rol ${role.name}?`)) return
-    setSaving(true)
     setError('')
     try {
-      await deleteRole(role.id)
+      await deleteMutation.mutateAsync(role.id)
       setFeedback('Rol eliminado correctamente.')
-      await loadRoles()
+      await queryClient.invalidateQueries({ queryKey: queryKeys.roles })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo eliminar el rol')
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -96,7 +78,7 @@ export default function RolesPage() {
       </div>
 
       {feedback ? <p className="mb-4 text-sm text-emerald-300" role="status">{feedback}</p> : null}
-      {error ? <p className="error" role="alert">{error}</p> : null}
+      {error || rolesQuery.error ? <p className="error" role="alert">{error || (rolesQuery.error instanceof Error ? rolesQuery.error.message : 'No se pudieron cargar los roles')}</p> : null}
       {loading ? <Loading /> : null}
       {!loading && roles.length === 0 ? <EmptyState message="No hay roles registrados." /> : null}
 

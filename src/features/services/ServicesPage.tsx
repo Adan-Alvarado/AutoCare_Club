@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../contexts/useAuth'
 import { addCartItem, createService, deleteService, getServices, updateService } from '../../services/api'
 import Loading from '../../components/Loading'
@@ -7,6 +8,7 @@ import type { ServiceItem } from '../../services/api'
 import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { queryKeys } from '../../services/queryKeys'
 
 const initialServiceForm = {
   name: '',
@@ -18,37 +20,29 @@ const initialServiceForm = {
 export default function ServicesPage() {
   const { role } = useAuth()
   const isAdmin = role === 'Admin'
-  const [services, setServices] = useState<ServiceItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
-  const [addingServiceId, setAddingServiceId] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState(initialServiceForm)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingService, setEditingService] = useState<ServiceItem | null>(null)
-
-  useEffect(() => {
-    void loadServices()
-  }, [])
-
-  async function loadServices() {
-    setLoading(true)
-    setError('')
-
-    try {
-      const data = await getServices()
-      setServices(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar los servicios')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const queryClient = useQueryClient()
+  const servicesQuery = useQuery({ queryKey: queryKeys.services, queryFn: getServices })
+  const saveServiceMutation = useMutation({
+    mutationFn: ({ service, payload }: { service: ServiceItem | null; payload: Parameters<typeof createService>[0] }) => (
+      service
+        ? updateService(service.id, { ...payload, isActive: service.isActive })
+        : createService(payload)
+    ),
+  })
+  const deleteServiceMutation = useMutation({ mutationFn: (id: string) => deleteService(id) })
+  const addCartMutation = useMutation({ mutationFn: (service: ServiceItem) => addCartItem(service.id) })
+  const services = servicesQuery.data ?? []
+  const loading = servicesQuery.isLoading
+  const submitting = saveServiceMutation.isPending || deleteServiceMutation.isPending
+  const addingServiceId = addCartMutation.isPending ? addCartMutation.variables?.id ?? null : null
 
   async function handleSaveService(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setSubmitting(true)
     setError('')
     setFeedback('')
 
@@ -61,20 +55,14 @@ export default function ServicesPage() {
         imageUrl: form.imageUrl.trim() ? form.imageUrl.trim() : null,
       }
 
-      if (editingService) {
-        await updateService(editingService.id, { ...payload, isActive: editingService.isActive })
-      } else {
-        await createService(payload)
-      }
+      await saveServiceMutation.mutateAsync({ service: editingService, payload })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.services })
       setForm(initialServiceForm)
       setIsCreateOpen(false)
       setEditingService(null)
       setFeedback(editingService ? 'Servicio actualizado correctamente.' : 'Servicio creado correctamente.')
-      await loadServices()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear el servicio')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -104,30 +92,25 @@ export default function ServicesPage() {
 
   async function handleDelete(service: ServiceItem) {
     if (!window.confirm(`¿Eliminar el servicio ${service.name}?`)) return
-    setSubmitting(true)
     setError('')
     try {
-      await deleteService(service.id)
+      await deleteServiceMutation.mutateAsync(service.id)
       setFeedback('Servicio eliminado correctamente.')
-      await loadServices()
+      await queryClient.invalidateQueries({ queryKey: queryKeys.services })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo eliminar el servicio')
-    } finally {
-      setSubmitting(false)
     }
   }
 
   async function addServiceToCart(service: ServiceItem) {
-    setAddingServiceId(service.id)
     setFeedback('')
 
     try {
-      await addCartItem(service.id)
+      await addCartMutation.mutateAsync(service)
+      await queryClient.invalidateQueries({ queryKey: queryKeys.cart })
       setFeedback(`${service.name} agregado al carrito.`)
     } catch (err) {
       setFeedback(err instanceof Error ? err.message : 'No se pudo agregar el servicio')
-    } finally {
-      setAddingServiceId(null)
     }
   }
 
@@ -144,7 +127,7 @@ export default function ServicesPage() {
               Crear servicio
             </FilledButton>
           ) : null}
-          <FilledButton onClick={() => void loadServices()} disabled={loading}>
+          <FilledButton onClick={() => void servicesQuery.refetch()} disabled={servicesQuery.isFetching}>
             Actualizar
           </FilledButton>
         </div>
@@ -250,8 +233,8 @@ export default function ServicesPage() {
 
       {loading ? (
         <Loading />
-      ) : error ? (
-        <p className="error">{error}</p>
+      ) : error || servicesQuery.error ? (
+        <p className="error">{error || (servicesQuery.error instanceof Error ? servicesQuery.error.message : 'No se pudieron cargar los servicios')}</p>
       ) : services.length === 0 ? (
         <EmptyState message="No hay servicios disponibles." />
       ) : (

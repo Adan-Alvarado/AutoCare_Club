@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { AuthContext } from './useAuth'
 import { loginUser, registerUser } from '../services/api'
 import type { LoginFormState, RegisterFormState, UserRole } from '../types'
@@ -33,6 +34,7 @@ function decodeUserRole(token: string | null): UserRole | null {
 
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('auth_token')))
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem('auth_email') ?? '')
   const [role, setRole] = useState<UserRole | null>(() => decodeUserRole(localStorage.getItem('auth_token')))
@@ -46,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await loginUser(form.email, form.password)
         localStorage.setItem('auth_token', data.token)
         localStorage.setItem('auth_email', data.email)
+        queryClient.clear()
         setUserEmail(data.email)
         setRole(decodeUserRole(data.token))
         setIsAuthenticated(true)
@@ -56,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         localStorage.setItem('auth_token', authData.token)
         localStorage.setItem('auth_email', authData.email)
+        queryClient.clear()
         setUserEmail(authData.email)
         setRole(decodeUserRole(authData.token))
         setIsAuthenticated(true)
@@ -63,12 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut() {
         localStorage.removeItem('auth_token')
         localStorage.removeItem('auth_email')
+        queryClient.clear()
         setUserEmail('')
         setRole(null)
         setIsAuthenticated(false)
       },
     }),
-    [isAuthenticated, userEmail, role],
+    [isAuthenticated, userEmail, role, queryClient],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

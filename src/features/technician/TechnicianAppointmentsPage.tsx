@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays } from 'lucide-react'
 import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
 import { getServices, getTechnicianAppointments, updateTechnicianAppointmentStatus, type AppointmentDto, type AppointmentStatus, type ServiceItem } from '../../services/api'
+import { queryKeys } from '../../services/queryKeys'
 
 const labels: Record<AppointmentStatus, string> = {
   Pending: 'Pendiente', Confirmed: 'Confirmada', InProgress: 'En proceso', Completed: 'Completada', Cancelled: 'Cancelada',
@@ -18,51 +20,32 @@ function nextStatus(status: AppointmentStatus): AppointmentStatus | null {
 }
 
 export default function TechnicianAppointmentsPage() {
-  const [appointments, setAppointments] = useState<AppointmentDto[]>([])
-  const [services, setServices] = useState<ServiceItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [savingId, setSavingId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const queryClient = useQueryClient()
+  const appointmentsQuery = useQuery({ queryKey: queryKeys.technicianAppointments, queryFn: getTechnicianAppointments })
+  const servicesQuery = useQuery({ queryKey: queryKeys.services, queryFn: getServices })
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: AppointmentStatus }) => updateTechnicianAppointmentStatus(id, status),
+  })
+  const appointments: AppointmentDto[] = appointmentsQuery.data ?? []
+  const services: ServiceItem[] = servicesQuery.data ?? []
+  const loading = appointmentsQuery.isLoading || servicesQuery.isLoading
+  const savingId = statusMutation.isPending ? statusMutation.variables?.id ?? null : null
 
-  async function loadData() {
-    setLoading(true)
+  async function refreshData() {
     setError('')
-    try {
-      const [appointmentData, serviceData] = await Promise.all([getTechnicianAppointments(), getServices()])
-      setAppointments(appointmentData)
-      setServices(serviceData)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar tus citas')
-    } finally {
-      setLoading(false)
-    }
+    await Promise.all([appointmentsQuery.refetch(), servicesQuery.refetch()])
   }
-
-  useEffect(() => {
-    let active = true
-    void Promise.all([getTechnicianAppointments(), getServices()])
-      .then(([appointmentData, serviceData]) => {
-        if (!active) return
-        setAppointments(appointmentData)
-        setServices(serviceData)
-      })
-      .catch((err: unknown) => { if (active) setError(err instanceof Error ? err.message : 'No se pudieron cargar tus citas') })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [])
 
   async function advance(appointment: AppointmentDto) {
     const status = nextStatus(appointment.status)
     if (!status) return
-    setSavingId(appointment.id)
     setError('')
     try {
-      await updateTechnicianAppointmentStatus(appointment.id, status)
-      await loadData()
+      await statusMutation.mutateAsync({ id: appointment.id, status })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.technicianAppointments })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo actualizar la cita')
-    } finally {
-      setSavingId(null)
     }
   }
 
@@ -73,9 +56,9 @@ export default function TechnicianAppointmentsPage() {
           <h1 className="mb-2 text-4xl font-bold text-gray-200">Mis citas asignadas</h1>
           <p className="text-gray-400">Actualiza cada trabajo a medida que avanza.</p>
         </div>
-        <FilledButton onClick={() => void loadData()} disabled={loading}>Actualizar</FilledButton>
+        <FilledButton onClick={() => void refreshData()} disabled={appointmentsQuery.isFetching || servicesQuery.isFetching}>Actualizar</FilledButton>
       </div>
-      {error ? <p className="error" role="alert">{error}</p> : null}
+      {error || appointmentsQuery.error || servicesQuery.error ? <p className="error" role="alert">{error || 'No se pudieron cargar tus citas'}</p> : null}
       {loading ? <Loading /> : null}
       {!loading && appointments.length === 0 ? <EmptyState message="No tienes citas asignadas." /> : null}
       {!loading ? (

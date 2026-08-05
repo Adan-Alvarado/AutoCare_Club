@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, Save } from 'lucide-react'
 import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
@@ -11,9 +12,9 @@ import {
   updateAppointment,
   type AppointmentDto,
   type AppointmentStatus,
-  type ServiceItem,
   type TechnicianDto,
 } from '../../services/api'
+import { queryKeys } from '../../services/queryKeys'
 
 const statuses: AppointmentStatus[] = ['Pending', 'Confirmed', 'InProgress', 'Completed', 'Cancelled']
 const statusLabels: Record<AppointmentStatus, string> = {
@@ -30,89 +31,61 @@ interface AppointmentDraft {
 }
 
 export default function AdminAppointmentsPage() {
-  const [appointments, setAppointments] = useState<AppointmentDto[]>([])
-  const [services, setServices] = useState<ServiceItem[]>([])
-  const [technicians, setTechnicians] = useState<TechnicianDto[]>([])
   const [drafts, setDrafts] = useState<Record<string, AppointmentDraft>>({})
-  const [loading, setLoading] = useState(true)
-  const [savingId, setSavingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
+  const queryClient = useQueryClient()
+  const appointmentsQuery = useQuery({ queryKey: queryKeys.adminAppointments, queryFn: getAppointments })
+  const servicesQuery = useQuery({ queryKey: queryKeys.services, queryFn: getServices })
+  const techniciansQuery = useQuery({ queryKey: queryKeys.technicians, queryFn: getTechnicians })
+  const saveMutation = useMutation({
+    mutationFn: ({ appointment, draft }: { appointment: AppointmentDto; draft: AppointmentDraft }) => updateAppointment(appointment.id, {
+      vehicleId: appointment.vehicleId,
+      serviceId: appointment.serviceId,
+      appointmentDate: appointment.appointmentDate,
+      startTime: appointment.startTime,
+      notes: appointment.notes ?? undefined,
+      technicianId: draft.technicianId || null,
+      status: draft.status,
+    }),
+  })
+  const appointments = appointmentsQuery.data ?? []
+  const technicians: TechnicianDto[] = techniciansQuery.data ?? []
+  const loading = appointmentsQuery.isLoading || servicesQuery.isLoading || techniciansQuery.isLoading
+  const savingId = saveMutation.isPending ? saveMutation.variables?.appointment.id ?? null : null
 
-  const serviceNames = useMemo(() => new Map(services.map((service) => [service.id, service.name])), [services])
+  const serviceNames = useMemo(
+    () => new Map((servicesQuery.data ?? []).map((service) => [service.id, service.name])),
+    [servicesQuery.data],
+  )
 
-  async function loadData() {
-    setLoading(true)
+  async function refreshData() {
     setError('')
-    try {
-      const [appointmentData, serviceData, technicianData] = await Promise.all([
-        getAppointments(),
-        getServices(),
-        getTechnicians(),
-      ])
-      setAppointments(appointmentData)
-      setServices(serviceData)
-      setTechnicians(technicianData)
-      setDrafts(Object.fromEntries(appointmentData.map((appointment) => [appointment.id, {
-        status: appointment.status,
-        technicianId: appointment.technicianId ?? '',
-      }])))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudieron cargar las citas')
-    } finally {
-      setLoading(false)
-    }
+    await Promise.all([appointmentsQuery.refetch(), servicesQuery.refetch(), techniciansQuery.refetch()])
   }
-
-  useEffect(() => {
-    let active = true
-    void Promise.all([getAppointments(), getServices(), getTechnicians()])
-      .then(([appointmentData, serviceData, technicianData]) => {
-        if (!active) return
-        setAppointments(appointmentData)
-        setServices(serviceData)
-        setTechnicians(technicianData)
-        setDrafts(Object.fromEntries(appointmentData.map((appointment) => [appointment.id, {
-          status: appointment.status,
-          technicianId: appointment.technicianId ?? '',
-        }])))
-      })
-      .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : 'No se pudieron cargar las citas')
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-
-    return () => { active = false }
-  }, [])
 
   function updateDraft(id: string, values: Partial<AppointmentDraft>) {
     setDrafts((current) => ({ ...current, [id]: { ...current[id], ...values } }))
   }
 
   async function saveAppointment(appointment: AppointmentDto) {
-    const draft = drafts[appointment.id]
-    if (!draft) return
-    setSavingId(appointment.id)
+    const draft = drafts[appointment.id] ?? {
+      status: appointment.status,
+      technicianId: appointment.technicianId ?? '',
+    }
     setError('')
     setFeedback('')
     try {
-      await updateAppointment(appointment.id, {
-        vehicleId: appointment.vehicleId,
-        serviceId: appointment.serviceId,
-        appointmentDate: appointment.appointmentDate,
-        startTime: appointment.startTime,
-        notes: appointment.notes ?? undefined,
-        technicianId: draft.technicianId || null,
-        status: draft.status,
+      await saveMutation.mutateAsync({ appointment, draft })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.adminAppointments })
+      setDrafts((current) => {
+        const next = { ...current }
+        delete next[appointment.id]
+        return next
       })
       setFeedback('Cita actualizada correctamente.')
-      await loadData()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo actualizar la cita')
-    } finally {
-      setSavingId(null)
     }
   }
 
@@ -123,18 +96,18 @@ export default function AdminAppointmentsPage() {
           <h1 className="mb-2 text-4xl font-bold text-gray-200">Administrar citas</h1>
           <p className="text-gray-400">Asigna un técnico y actualiza el estado de cada servicio.</p>
         </div>
-        <FilledButton onClick={() => void loadData()} disabled={loading}>Actualizar</FilledButton>
+        <FilledButton onClick={() => void refreshData()} disabled={appointmentsQuery.isFetching || servicesQuery.isFetching || techniciansQuery.isFetching}>Actualizar</FilledButton>
       </div>
 
       {feedback ? <p className="mb-4 text-sm text-emerald-300" role="status">{feedback}</p> : null}
-      {error ? <p className="error" role="alert">{error}</p> : null}
+      {error || appointmentsQuery.error || servicesQuery.error || techniciansQuery.error ? <p className="error" role="alert">{error || 'No se pudieron cargar los datos de las citas'}</p> : null}
       {loading ? <Loading /> : null}
       {!loading && appointments.length === 0 ? <EmptyState message="No hay citas registradas." /> : null}
 
       {!loading && appointments.length > 0 ? (
         <div className="mt-5 space-y-4">
           {appointments.map((appointment) => {
-            const draft = drafts[appointment.id]
+            const draft = drafts[appointment.id] ?? { status: appointment.status, technicianId: appointment.technicianId ?? '' }
             return (
               <ThemedPanel key={appointment.id} className="rounded-2xl">
                 <div className="flex flex-wrap items-start justify-between gap-5">
