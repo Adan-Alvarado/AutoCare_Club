@@ -141,6 +141,15 @@ export interface TechnicianDto {
   createdAt: string
 }
 
+export interface UserAdminDto {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  createdAt: string
+  roles?: string[] | null
+}
+
 export interface PaymentIntentDto {
   paymentIntentId: string
   clientSecret: string
@@ -391,6 +400,56 @@ export async function getTechnicians(): Promise<TechnicianDto[]> {
     method: 'GET',
   })
   return result.data?.items ?? []
+}
+
+export async function getUsers(): Promise<UserAdminDto[]> {
+  const result = await httpRequest<PageDto<UserAdminDto[]>>('/api/users?page=1&pageSize=100', {
+    method: 'GET',
+  })
+  return result.data?.items ?? []
+}
+
+export async function updateUserRole(
+  userId: string,
+  role: 'Customer' | 'Technician' | 'Admin',
+  specialty: string,
+  profile: { firstName: string; lastName: string; email: string },
+): Promise<void> {
+  const roles = role === 'Admin' ? ['Admin'] : role === 'Technician' ? ['Technician'] : ['Customer']
+  const result = await httpRequest(`/api/users/${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      email: profile.email,
+      roles,
+      password: 'Temp123!',
+      confirmPassword: 'Temp123!',
+      changePassword: false,
+    }),
+  })
+
+  if (!result.status) {
+    throw new Error(result.message || 'No se pudo actualizar el usuario')
+  }
+
+  if (role === 'Technician') {
+    const techResult = await httpRequest(`/api/technicians/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ specialty: specialty.trim() || 'General', isActive: true }),
+    })
+
+    if (!techResult.status) {
+      const createResult = await httpRequest('/api/technicians', {
+        method: 'POST',
+        body: JSON.stringify({ userId, specialty: specialty.trim() || 'General' }),
+      })
+
+      if (!createResult.status) {
+        throw new Error(createResult.message || 'No se pudo crear el perfil de técnico')
+      }
+    }
+  }
 }
 
 export async function getRoles(): Promise<RoleDto[]> {
