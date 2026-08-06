@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Navigate, useNavigate, useParams } from 'react-router'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import Loading from '../../components/Loading'
 import {
   checkoutCart,
   createAppointment,
+  createCheckoutSession,
   createPaymentIntent,
   deleteCartItem,
   getAvailableSchedules,
@@ -43,6 +44,7 @@ function cartPath(step: CheckoutStep) {
 
 export default function CartPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { '*': stepPath = '' } = useParams()
   const queryClient = useQueryClient()
   const routedStep = stepPath || 'cart'
@@ -58,6 +60,7 @@ export default function CartPage() {
   const [pendingOrder, setPendingOrder] = useState<OrderDto | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('workshop')
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntentDto | null>(null)
+  const returnedFromStripe = Boolean(searchParams.get('session_id') || searchParams.get('order_id'))
 
   const cartQuery = useQuery({ queryKey: queryKeys.cart, queryFn: getCart })
   const servicesQuery = useQuery({ queryKey: queryKeys.services, queryFn: getServices })
@@ -100,13 +103,14 @@ export default function CartPage() {
         appointmentDate: date,
         startTime: slot.startTime,
         notes: currentCart.items.length > 1
-          ? `Orden con ${currentCart.items.length} servicios. Horario calculado a partir del servicio principal.`
+          ? `Orden con ${currentCart.items.length} servicios. Horario calculated a partir del servicio principal.`
           : undefined,
       })
       return checkoutCart(vehicleId, appointment.id)
     },
   })
   const paymentIntentMutation = useMutation({ mutationFn: (orderId: string) => createPaymentIntent(orderId) })
+  const checkoutSessionMutation = useMutation({ mutationFn: (orderId: string) => createCheckoutSession(orderId) })
 
   const vehicles = (vehiclesQuery.data ?? []).filter((vehicle) => vehicle.isActive)
   const slots = schedulesQuery.data ?? []
@@ -117,12 +121,20 @@ export default function CartPage() {
     || clearCartMutation.isPending
     || reservationMutation.isPending
     || paymentIntentMutation.isPending
+    || checkoutSessionMutation.isPending
   const loading = cartQuery.isLoading || servicesQuery.isLoading || (activeStep === 'vehicle' && vehiclesQuery.isLoading)
   const queryError = [cartQuery.error, servicesQuery.error, vehiclesQuery.error, schedulesQuery.error]
     .find((value) => value instanceof Error)
 
   useEffect(() => {
     if (!step || loading) return
+
+    if (returnedFromStripe) {
+      if (activeStep !== 'confirmation') {
+        navigate(cartPath('confirmation'), { replace: true })
+      }
+      return
+    }
 
     const hasValidCart = Boolean(cart && cart.items.length === 1 && cart.items[0].quantity >= 1)
     let requiredStep: CheckoutStep | null = null
@@ -138,7 +150,7 @@ export default function CartPage() {
     }
 
     if (requiredStep) navigate(cartPath(requiredStep), { replace: true })
-  }, [activeStep, cart, completedOrder, loading, navigate, selectedSlot, selectedVehicleId, step])
+  }, [activeStep, cart, completedOrder, loading, navigate, returnedFromStripe, selectedSlot, selectedVehicleId, step])
 
   const totalMinutes = useMemo(() => {
     const currentCart = cartQuery.data
@@ -226,9 +238,11 @@ export default function CartPage() {
 
       if (paymentMethod === 'card') {
         try {
-          const intent = await paymentIntentMutation.mutateAsync(order.id)
-          setPaymentIntent(intent)
-          return
+          const session = await checkoutSessionMutation.mutateAsync(order.id)
+          if (session.url) {
+            window.location.href = session.url
+            return
+          }
         } catch (e) {
           setPaymentIntent(null)
           setPaymentMethod('workshop')
