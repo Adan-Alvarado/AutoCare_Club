@@ -367,6 +367,21 @@ export async function getAppointments(): Promise<AppointmentDto[]> {
   return result.data ?? []
 }
 
+export async function getMyAppointments(): Promise<AppointmentDto[]> {
+  const result = await httpRequest<AppointmentDto[]>('/api/appointments/me', { method: 'GET' })
+  return result.data ?? []
+}
+
+export async function cancelAppointment(id: string): Promise<void> {
+  const result = await httpRequest<AppointmentActionResponseDto>(`/api/appointments/${id}/cancel`, {
+    method: 'PATCH',
+  })
+
+  if (!result.status) {
+    throw new Error(result.message || 'No se pudo cancelar la cita')
+  }
+}
+
 export async function getTechnicianAppointments(): Promise<AppointmentDto[]> {
   const result = await httpRequest<AppointmentDto[]>('/api/appointments/technician/me', { method: 'GET' })
   return result.data ?? []

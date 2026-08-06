@@ -12,6 +12,7 @@ import AdminAppointmentsPage from './features/admin/AdminAppointmentsPage'
 import AdminUsersPage from './features/admin/AdminUsersPage'
 import RolesPage from './features/admin/RolesPage'
 import TechnicianAppointmentsPage from './features/technician/TechnicianAppointmentsPage'
+import CustomerAppointmentsPage from './features/appointments/CustomerAppointmentsPage'
 import NotFoundPage from './features/not-found/NotFoundPage'
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
                   <Routes>
                     <Route path="services" element={<ServicesPage />} />
                     <Route path="vehicles" element={<VehiclesPage />} />
+                    <Route path="appointments" element={<CustomerAppointmentsPage />} />
                     <Route path="cart/*" element={<CartPage />} />
                     <Route path="admin/appointments" element={<AdminAppointmentsPage />} />
                     <Route path="admin/users" element={<AdminUsersPage />} />

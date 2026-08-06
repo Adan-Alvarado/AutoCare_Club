@@ -8,6 +8,7 @@ export const RoutesBar = () => {
     <div className="space-x-4 flex flex-row items-center justify-around md:justify-center gap-4">
       <NavButton to="/services">Servicios</NavButton>
       {role === 'Customer' ? <NavButton to="/vehicles">Vehículos</NavButton> : null}
+      {role === 'Customer' ? <NavButton to="/appointments">Mis citas</NavButton> : null}
       {role === 'Admin' ? <NavButton to="/admin/appointments">Citas</NavButton> : null}
       {role === 'Admin' ? <NavButton to="/admin/users">Usuarios</NavButton> : null}
       {role === 'Admin' ? <NavButton to="/admin/roles">Roles</NavButton> : null}
