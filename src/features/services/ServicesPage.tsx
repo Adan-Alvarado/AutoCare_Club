@@ -251,34 +251,49 @@ export default function ServicesPage() {
         <div className="service-grid grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4 mt-4">
           {services.map((service) => (
             <article key={service.id} className="service-card mb-4">
-              <ThemedPanel>
-             
-              <h2 className="text-xl font-bold text-gray-200">{service.name}</h2>
-              <p className="text-gray-300">{service.description}</p>
-              <span className="text-gray-400">{service.durationMinutes} min</span>
-              <div className='h-10'></div>
-              <div className="service-meta flex flex-row justify-between items-center mt-2 gap-10">
-                <span className="text-lg font-bold text-green-200">{formatMoney(service.price)}</span>
-                {isAdmin ? (
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => openEdit(service)} className="rounded-xl border border-gray-700 p-3 text-gray-200 hover:bg-gray-800" aria-label={`Editar ${service.name}`}>
-                      <Pencil size={16} />
-                    </button>
-                    <button type="button" onClick={() => void handleDelete(service)} disabled={submitting} className="rounded-xl border border-red-900 p-3 text-red-300 hover:bg-red-950" aria-label={`Eliminar ${service.name}`}>
-                      <Trash2 size={16} />
-                    </button>
+              <ThemedPanel className="relative overflow-hidden rounded-3xl border border-gray-800 bg-gray-900/80 p-0">
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: service.imageUrl ? `url(${service.imageUrl})` : undefined }}
+                />
+                <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/70 to-black/40" />
+
+                <div className="relative flex h-full flex-col justify-between p-2">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">{service.name}</h2>
+                    <p className="mt-2 text-sm leading-6 text-gray-200">{service.description}</p>
                   </div>
-                ) : (
-                  <FilledButton
-                    onClick={() => void addServiceToCart(service)}
-                    disabled={addingServiceId === service.id}
-                  >
-                    <span className="flex flex-row items-center gap-1">
-                    <Plus size={16}></Plus>
-                    {addingServiceId === service.id ? 'Agregando...' : 'Reservar'}
-                    </span></FilledButton>
-                )}
-              </div>
+
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between text-sm text-gray-300">
+                      <span>{service.durationMinutes} min</span>
+                      <span className="text-lg font-bold text-green-200">{formatMoney(service.price)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2">
+                      {isAdmin ? (
+                        <>
+                          <button type="button" onClick={() => openEdit(service)} className="rounded-xl border border-gray-700 bg-black/40 p-3 text-gray-200 backdrop-blur-sm hover:bg-gray-800" aria-label={`Editar ${service.name}`}>
+                            <Pencil size={16} />
+                          </button>
+                          <button type="button" onClick={() => void handleDelete(service)} disabled={submitting} className="rounded-xl border border-red-900/70 bg-black/40 p-3 text-red-300 backdrop-blur-sm hover:bg-red-950" aria-label={`Eliminar ${service.name}`}>
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <FilledButton
+                          onClick={() => void addServiceToCart(service)}
+                          disabled={addingServiceId === service.id}
+                        >
+                          <span className="flex flex-row items-center gap-1">
+                            <Plus size={16} />
+                            {addingServiceId === service.id ? 'Agregando...' : 'Reservar'}
+                          </span>
+                        </FilledButton>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </ThemedPanel>
             </article>
           ))}
