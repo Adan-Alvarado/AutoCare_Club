@@ -123,7 +123,7 @@ export default function CartPage() {
   useEffect(() => {
     if (!step || loading) return
 
-    const hasValidCart = Boolean(cart && cart.items.length === 1 && cart.items[0].quantity === 1)
+    const hasValidCart = Boolean(cart && cart.items.length === 1 && cart.items[0].quantity >= 1)
     let requiredStep: CheckoutStep | null = null
 
     if (activeStep !== 'cart' && !hasValidCart) {
@@ -150,8 +150,7 @@ export default function CartPage() {
   }, [cartQuery.data, servicesQuery.data])
 
   async function changeQuantity(itemId: string, quantity: number) {
-    const currentQuantity = cart?.items.find((item) => item.id === itemId)?.quantity ?? 1
-    if (quantity < 1 || quantity >= currentQuantity) return
+    if (quantity < 1) return
     setError('')
     try {
       await updateItemMutation.mutateAsync({ itemId, quantity })
@@ -181,8 +180,8 @@ export default function CartPage() {
 
   function continueFromCart() {
     setError('')
-    if (!cart || cart.items.length !== 1 || cart.items[0].quantity !== 1) {
-      setError('Para continuar, deja un solo servicio con cantidad 1 en el carrito.')
+    if (!cart || cart.items.length !== 1 || cart.items[0].quantity < 1) {
+      setError('Para continuar, deja un solo servicio en el carrito y ajusta su cantidad si lo necesitas.')
       return
     }
     navigate(cartPath('vehicle'))
