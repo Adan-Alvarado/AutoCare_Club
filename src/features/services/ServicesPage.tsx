@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../contexts/useAuth'
-import { addCartItem, createService, deleteService, getCart, getServices, updateService } from '../../services/api'
+import { addCartItem, createService, deleteService, getServices, updateService } from '../../services/api'
 import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import type { ServiceItem } from '../../services/api'
@@ -43,13 +43,7 @@ export default function ServicesPage() {
   })
   const deleteServiceMutation = useMutation({ mutationFn: (id: string) => deleteService(id) })
   const addCartMutation = useMutation({
-    mutationFn: async (service: ServiceItem) => {
-      const currentCart = await getCart()
-      if (currentCart?.items.length) {
-        throw new Error('Para esta versión solo puedes reservar un servicio por cita. Vacía el carrito antes de elegir otro.')
-      }
-      return addCartItem(service.id)
-    },
+    mutationFn: async (service: ServiceItem) => addCartItem(service.id, 1),
   })
   const services = servicesQuery.data ?? []
   const loading = servicesQuery.isLoading
