@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import Loading from '../../components/Loading'
 import {
   checkoutCart,
@@ -34,10 +34,21 @@ interface ReservationData {
   date: string
 }
 
+const checkoutSteps: CheckoutStep[] = ['cart', 'vehicle', 'schedule', 'payment', 'confirmation']
+
+function cartPath(step: CheckoutStep) {
+  return step === 'cart' ? '/cart' : `/cart/${step}`
+}
+
 export default function CartPage() {
   const navigate = useNavigate()
+  const { '*': stepPath = '' } = useParams()
   const queryClient = useQueryClient()
-  const [step, setStep] = useState<CheckoutStep>('cart')
+  const routedStep = stepPath || 'cart'
+  const step = checkoutSteps.includes(routedStep as CheckoutStep)
+    ? routedStep as CheckoutStep
+    : null
+  const activeStep = step ?? 'cart'
   const [selectedVehicleId, setSelectedVehicleId] = useState('')
   const [selectedDate, setSelectedDate] = useState(localDate(1))
   const [selectedSlot, setSelectedSlot] = useState<ScheduleAvailabilityDto | null>(null)
@@ -52,14 +63,14 @@ export default function CartPage() {
   const vehiclesQuery = useQuery({
     queryKey: queryKeys.vehicles,
     queryFn: getVehicles,
-    enabled: step !== 'cart',
+    enabled: activeStep !== 'cart',
   })
   const cart = cartQuery.data ?? null
   const serviceId = cart?.items[0]?.serviceId ?? ''
   const schedulesQuery = useQuery({
     queryKey: queryKeys.schedules(serviceId, selectedDate),
     queryFn: () => getAvailableSchedules(serviceId, selectedDate),
-    enabled: step === 'schedule' && Boolean(serviceId && selectedDate),
+    enabled: activeStep === 'schedule' && Boolean(serviceId && selectedDate),
   })
 
   const updateItemMutation = useMutation({
@@ -105,9 +116,28 @@ export default function CartPage() {
     || clearCartMutation.isPending
     || reservationMutation.isPending
     || paymentIntentMutation.isPending
-  const loading = cartQuery.isLoading || servicesQuery.isLoading || (step === 'vehicle' && vehiclesQuery.isLoading)
+  const loading = cartQuery.isLoading || servicesQuery.isLoading || (activeStep === 'vehicle' && vehiclesQuery.isLoading)
   const queryError = [cartQuery.error, servicesQuery.error, vehiclesQuery.error, schedulesQuery.error]
     .find((value) => value instanceof Error)
+
+  useEffect(() => {
+    if (!step || loading) return
+
+    const hasValidCart = Boolean(cart && cart.items.length === 1 && cart.items[0].quantity === 1)
+    let requiredStep: CheckoutStep | null = null
+
+    if (activeStep !== 'cart' && !hasValidCart) {
+      requiredStep = 'cart'
+    } else if (['schedule', 'payment', 'confirmation'].includes(activeStep) && !selectedVehicleId) {
+      requiredStep = 'vehicle'
+    } else if (['payment', 'confirmation'].includes(activeStep) && !selectedSlot) {
+      requiredStep = 'schedule'
+    } else if (activeStep === 'confirmation' && !completedOrder) {
+      requiredStep = 'payment'
+    }
+
+    if (requiredStep) navigate(cartPath(requiredStep), { replace: true })
+  }, [activeStep, cart, completedOrder, loading, navigate, selectedSlot, selectedVehicleId, step])
 
   const totalMinutes = useMemo(() => {
     const currentCart = cartQuery.data
@@ -120,7 +150,8 @@ export default function CartPage() {
   }, [cartQuery.data, servicesQuery.data])
 
   async function changeQuantity(itemId: string, quantity: number) {
-    if (quantity < 1 || quantity > 10) return
+    const currentQuantity = cart?.items.find((item) => item.id === itemId)?.quantity ?? 1
+    if (quantity < 1 || quantity >= currentQuantity) return
     setError('')
     try {
       await updateItemMutation.mutateAsync({ itemId, quantity })
@@ -150,12 +181,16 @@ export default function CartPage() {
 
   function continueFromCart() {
     setError('')
-    setStep('vehicle')
+    if (!cart || cart.items.length !== 1 || cart.items[0].quantity !== 1) {
+      setError('Para continuar, deja un solo servicio con cantidad 1 en el carrito.')
+      return
+    }
+    navigate(cartPath('vehicle'))
   }
 
   function continueToSchedule() {
     setSelectedSlot(null)
-    setStep('schedule')
+    navigate(cartPath('schedule'))
   }
 
   function changeDate(date: string) {
@@ -187,7 +222,7 @@ export default function CartPage() {
         setPaymentIntent(await paymentIntentMutation.mutateAsync(order.id))
       } else {
         setCompletedOrder(order)
-        setStep('confirmation')
+        navigate(cartPath('confirmation'))
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo confirmar la reserva')
@@ -196,7 +231,7 @@ export default function CartPage() {
 
   function finishCardPayment() {
     if (pendingOrder) setCompletedOrder(pendingOrder)
-    setStep('confirmation')
+    navigate(cartPath('confirmation'))
   }
 
   function goBack() {
@@ -205,14 +240,18 @@ export default function CartPage() {
       schedule: 'vehicle',
       payment: 'schedule',
     }
-    const previous = previousStep[step]
-    if (previous) setStep(previous)
+    const previous = previousStep[activeStep]
+    if (previous) navigate(cartPath(previous), { replace: true })
+  }
+
+  if (!step) {
+    return <Navigate to="/cart" replace />
   }
 
   return (
     <CartModal
-      title={stepTitles[step]}
-      showBack={step !== 'cart' && step !== 'confirmation' && !pendingOrder}
+      title={stepTitles[activeStep]}
+      showBack={activeStep !== 'cart' && activeStep !== 'confirmation' && !pendingOrder}
       error={error || (queryError instanceof Error ? queryError.message : '')}
       onBack={goBack}
       onClose={() => navigate('/services')}
@@ -223,12 +262,13 @@ export default function CartPage() {
           date={selectedDate}
           slot={selectedSlot}
           totalMinutes={totalMinutes}
+          paymentMethod={paymentMethod}
         />
       )}
     >
       {loading ? <Loading /> : null}
 
-      {!loading && step === 'cart' ? (
+      {!loading && activeStep === 'cart' ? (
         <CartItemsStep
           cart={cart}
           saving={saving}
@@ -240,7 +280,7 @@ export default function CartPage() {
         />
       ) : null}
 
-      {!loading && step === 'vehicle' ? (
+      {!loading && activeStep === 'vehicle' ? (
         <VehicleStep
           vehicles={vehicles}
           selectedVehicleId={selectedVehicleId}
@@ -250,7 +290,7 @@ export default function CartPage() {
         />
       ) : null}
 
-      {step === 'schedule' ? (
+      {activeStep === 'schedule' ? (
         <ScheduleStep
           date={selectedDate}
           minimumDate={localDate()}
@@ -259,11 +299,11 @@ export default function CartPage() {
           loading={schedulesQuery.isLoading || schedulesQuery.isFetching}
           onDateChange={changeDate}
           onSelectSlot={setSelectedSlot}
-          onContinue={() => setStep('payment')}
+          onContinue={() => navigate(cartPath('payment'))}
         />
       ) : null}
 
-      {step === 'payment' ? (
+      {activeStep === 'payment' ? (
         <PaymentStep
           saving={saving}
           method={paymentMethod}
@@ -274,7 +314,7 @@ export default function CartPage() {
         />
       ) : null}
 
-      {step === 'confirmation' && selectedSlot ? (
+      {activeStep === 'confirmation' && selectedSlot ? (
         <ConfirmationStep
           date={selectedDate}
           startTime={selectedSlot.startTime}

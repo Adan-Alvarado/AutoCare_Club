@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../contexts/useAuth'
-import { addCartItem, createService, deleteService, getServices, updateService } from '../../services/api'
+import { addCartItem, createService, deleteService, getCart, getServices, updateService } from '../../services/api'
 import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import type { ServiceItem } from '../../services/api'
@@ -9,6 +9,7 @@ import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { queryKeys } from '../../services/queryKeys'
+import { formatMoney } from '../cart/cart.utils'
 
 const initialServiceForm = {
   name: '',
@@ -35,7 +36,15 @@ export default function ServicesPage() {
     ),
   })
   const deleteServiceMutation = useMutation({ mutationFn: (id: string) => deleteService(id) })
-  const addCartMutation = useMutation({ mutationFn: (service: ServiceItem) => addCartItem(service.id) })
+  const addCartMutation = useMutation({
+    mutationFn: async (service: ServiceItem) => {
+      const currentCart = await getCart()
+      if (currentCart?.items.length) {
+        throw new Error('Para esta versión solo puedes reservar un servicio por cita. Vacía el carrito antes de elegir otro.')
+      }
+      return addCartItem(service.id)
+    },
+  })
   const services = servicesQuery.data ?? []
   const loading = servicesQuery.isLoading
   const submitting = saveServiceMutation.isPending || deleteServiceMutation.isPending
@@ -103,6 +112,7 @@ export default function ServicesPage() {
   }
 
   async function addServiceToCart(service: ServiceItem) {
+    setError('')
     setFeedback('')
 
     try {
@@ -110,7 +120,7 @@ export default function ServicesPage() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.cart })
       setFeedback(`${service.name} agregado al carrito.`)
     } catch (err) {
-      setFeedback(err instanceof Error ? err.message : 'No se pudo agregar el servicio')
+      setError(err instanceof Error ? err.message : 'No se pudo agregar el servicio')
     }
   }
 
@@ -248,7 +258,7 @@ export default function ServicesPage() {
               <span className="text-gray-400">{service.durationMinutes} min</span>
               <div className='h-10'></div>
               <div className="service-meta flex flex-row justify-between items-center mt-2 gap-10">
-                <span className="text-lg font-bold text-green-200">${service.price.toFixed(2)}</span>
+                <span className="text-lg font-bold text-green-200">{formatMoney(service.price)}</span>
                 {isAdmin ? (
                   <div className="flex gap-2">
                     <button type="button" onClick={() => openEdit(service)} className="rounded-xl border border-gray-700 p-3 text-gray-200 hover:bg-gray-800" aria-label={`Editar ${service.name}`}>

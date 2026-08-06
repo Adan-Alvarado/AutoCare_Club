@@ -1,6 +1,7 @@
 import { CalendarDays, CarFront, Clock3, CreditCard } from 'lucide-react'
 import type { OrderDto, ScheduleAvailabilityDto, VehicleDto } from '../../../services/api'
 import { formatDate, formatMoney, formatTime } from '../cart.utils'
+import type { PaymentMethod } from '../cart.types'
 
 interface OrderSummaryProps {
   cart: OrderDto | null
@@ -8,6 +9,7 @@ interface OrderSummaryProps {
   date: string
   slot: ScheduleAvailabilityDto | null
   totalMinutes: number
+  paymentMethod: PaymentMethod
 }
 
 export default function OrderSummary({
@@ -16,6 +18,7 @@ export default function OrderSummary({
   date,
   slot,
   totalMinutes,
+  paymentMethod,
 }: OrderSummaryProps) {
   return (
     <aside className="sticky top-0 self-start border-l border-gray-800 bg-gray-900/35 p-6">
@@ -39,7 +42,7 @@ export default function OrderSummary({
         </div>
         <div className="flex gap-3">
           <CreditCard className="mt-0.5 shrink-0 text-gray-500" size={18} />
-          <div><dt className="text-gray-500">Pago</dt><dd className="font-medium text-gray-200">En el taller</dd></div>
+          <div><dt className="text-gray-500">Pago</dt><dd className="font-medium text-gray-200">{paymentMethod === 'card' ? 'Tarjeta' : 'En el taller'}</dd></div>
         </div>
         <div className="flex gap-3">
           <Clock3 className="mt-0.5 shrink-0 text-gray-500" size={18} />

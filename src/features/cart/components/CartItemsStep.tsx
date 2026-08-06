@@ -1,4 +1,4 @@
-import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react'
+import { Minus, ShoppingCart, Trash2 } from 'lucide-react'
 import { BorderButton, FilledButton } from '../../../components/Buttons'
 import type { OrderDto } from '../../../services/api'
 import { formatMoney } from '../cart.utils'
@@ -33,6 +33,8 @@ export default function CartItemsStep({
     )
   }
 
+  const requiresAdjustment = cart.items.length !== 1 || cart.items[0].quantity !== 1
+
   return (
     <div>
       <div className="space-y-3">
@@ -53,15 +55,6 @@ export default function CartItemsStep({
                 <Minus size={15} />
               </button>
               <span className="w-9 text-center text-sm font-bold">{item.quantity}</span>
-              <button
-                type="button"
-                onClick={() => onChangeQuantity(item.id, item.quantity + 1)}
-                disabled={saving || item.quantity >= 10}
-                className="p-2 text-gray-300 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label={`Aumentar cantidad de ${item.serviceName}`}
-              >
-                <Plus size={15} />
-              </button>
             </div>
             <strong className="w-28 text-right text-gray-100">{formatMoney(item.subtotal)}</strong>
             <button
@@ -76,9 +69,14 @@ export default function CartItemsStep({
           </article>
         ))}
       </div>
+      {requiresAdjustment ? (
+        <p className="mt-4 rounded-xl border border-amber-900 bg-amber-950/40 px-4 py-3 text-sm text-amber-100" role="status">
+          Para reservar, deja un solo servicio con cantidad 1. Puedes reducir la cantidad o eliminar los servicios adicionales.
+        </p>
+      ) : null}
       <div className="mt-6 flex items-center justify-between">
         <BorderButton onClick={onClear} disabled={saving}>Vaciar carrito</BorderButton>
-        <FilledButton onClick={onContinue} disabled={saving}>Continuar</FilledButton>
+        <FilledButton onClick={onContinue} disabled={saving || requiresAdjustment}>Continuar</FilledButton>
       </div>
     </div>
   )
