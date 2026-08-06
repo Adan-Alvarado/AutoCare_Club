@@ -10,67 +10,67 @@ export default function NavBar() {
   const isAdmin = role === 'Admin'
   const isTechnician = role === 'Technician'
 
-  
-
   return (
-    <div className="service-grid flex flex-col sm:flex-row gap-4 py-4 justify-between items-center px-4 shadow-md border-b border-gray-800 mr-4 ml-4">
-      <div className="brand">
-        <span className="text-lg font-bold text-gray-200">
-          AutoCare Club
-          
-          </span>
-      </div>
-      <div className="app-routes md:flex hidden flex-row items-center justify-center gap-4">
-        <RoutesBar />
-      </div>
-     
-      <div className="app-actions flex flex-row items-center justify-center">
-        {isAuthenticated ? (
-          <div className="flex flex-row items-center gap-2">
-
-            
-          
-            {(isAdmin || isTechnician) ? null : (
-              <BorderButton onClick={() => navigate('/cart')} type="button">
-                <ShoppingBag size={16}></ShoppingBag>
-              </BorderButton>
-            )}
-            
-            
-            
-            <BorderButton type="button" onClick={signOut}>
-
-              <LogOut size={16}></LogOut>
-            </BorderButton>
-            <div className="flex flex-col items-end">
-              <span className="text-gray-200 text-sm">{userEmail}</span>
-              <span className="text-[11px] uppercase tracking-wide text-gray-400">{role ?? 'Sin Rol'}</span>
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#040607]/90 backdrop-blur-xl">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-3">
+          <Link to="/services" className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 p-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-300 text-sm font-semibold text-[#040607]">
+              AC
             </div>
-          </div>
-        ) : (
-          <Link to="/login" className="button-secondary">
-            Iniciar sesión
+            <div>
+              <p className="text-sm font-semibold text-white mr-2">AutoCare Club</p>
+            </div>
           </Link>
-        )}
-      </div> 
-    </div>
+        </div>
+
+        <div className="hidden md:flex">
+          <RoutesBar />
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isAuthenticated ? (
+            <>
+              {(isAdmin || isTechnician) ? null : (
+                <BorderButton onClick={() => navigate('/cart')} type="button" className="!rounded-full">
+                  <ShoppingBag size={16} />
+                </BorderButton>
+              )}
+
+              <BorderButton type="button" onClick={signOut} className="!rounded-full">
+                <LogOut size={16} />
+              </BorderButton>
+
+              <div className="hidden flex-col items-end sm:flex">
+                <span className="text-sm font-medium text-white">{userEmail}</span>
+                <span className="text-[11px] uppercase tracking-[0.24em] text-gray-400">{role ?? 'Sin Rol'}</span>
+              </div>
+            </>
+          ) : (
+            <Link to="/login" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-gray-100 transition hover:bg-white/10">
+              Iniciar sesión
+            </Link>
+          )}
+        </div>
+      </div>
+    </header>
   )
 }
 
-
 export const NavButton = ({ to, children }: { to: string; children: React.ReactNode }) => {
-  const location = useLocation();
+  const location = useLocation()
   const isActive = (path: string) => {
-    if (path === "/") {
-      return location.pathname === "/";
+    if (path === '/') {
+      return location.pathname === '/'
     }
 
-    return location.pathname.startsWith(path);
-  };
+    return location.pathname.startsWith(path)
+  }
+
   return (
     <Link
       to={to}
-      className={`px-3 py-2 rounded-md text-sm font-medium text-gray-200 ${!isActive(to) ? "hover:bg-gray-800" : ""}  ${isActive(to) ? "bg-gray-200 text-gray-900" : ""}`}
+      className={`rounded-full px-3 py-2 text-sm font-medium transition ${isActive(to) ? 'bg-amber-300 text-[#040607]' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
     >
       {children}
     </Link>
