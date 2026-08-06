@@ -121,7 +121,7 @@ export default function AdminAppointmentsPage() {
                   </div>
 
                   {draft ? (
-                    <div className="grid min-w-[520px] grid-cols-[1fr_1fr_auto] items-end gap-3">
+                    <div className="grid min-w-130 grid-cols-[1fr_1fr_auto] items-end gap-3">
                       <label className="flex flex-col gap-1 text-sm text-gray-300">
                         Técnico
                         <select value={draft.technicianId} onChange={(event) => updateDraft(appointment.id, { technicianId: event.target.value })} className="rounded-xl border border-gray-700 bg-black px-3 py-2 text-gray-100">
