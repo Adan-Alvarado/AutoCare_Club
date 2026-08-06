@@ -20,7 +20,7 @@ export default function StripePaymentForm({ onSuccess }: StripePaymentFormProps)
 
     const result = await stripe.confirmPayment({
       elements,
-      confirmParams: { return_url: window.location.href },
+      confirmParams: { return_url: `${window.location.origin}/cart/confirmation` },
       redirect: 'if_required',
     })
 
