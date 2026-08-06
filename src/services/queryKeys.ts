@@ -5,6 +5,7 @@ export const queryKeys = {
   roles: ['roles'] as const,
   technicians: ['technicians'] as const,
   adminUsers: ['users', 'admin'] as const,
+  adminSchedules: ['schedules', 'admin'] as const,
   adminAppointments: ['appointments', 'admin'] as const,
   customerAppointments: ['appointments', 'customer'] as const,
   technicianAppointments: ['appointments', 'technician'] as const,

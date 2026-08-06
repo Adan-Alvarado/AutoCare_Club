@@ -12,6 +12,7 @@ export const RoutesBar = () => {
       {role === 'Admin' ? <NavButton to="/admin/appointments">Citas</NavButton> : null}
       {role === 'Admin' ? <NavButton to="/admin/users">Usuarios</NavButton> : null}
       {role === 'Admin' ? <NavButton to="/admin/roles">Roles</NavButton> : null}
+      {role === 'Admin' ? <NavButton to="/admin/schedules">Horarios</NavButton> : null}
       {role === 'Technician' ? <NavButton to="/technician/appointments">Mis citas</NavButton> : null}
     </div>
   )
