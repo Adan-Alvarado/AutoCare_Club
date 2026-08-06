@@ -526,3 +526,13 @@ export async function createCheckoutSession(orderId: string): Promise<CheckoutSe
   }
   return result.data
 }
+
+export async function verifyCheckoutSession(sessionId: string): Promise<CheckoutSessionDto> {
+  const result = await httpRequest<CheckoutSessionDto>(`/api/payments/sessions/${sessionId}/verify`, {
+    method: 'POST',
+  })
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo verificar el estado del pago')
+  }
+  return result.data
+}
