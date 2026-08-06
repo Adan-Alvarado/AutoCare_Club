@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
 import { ChevronLeft, X } from 'lucide-react'
 
 interface CartModalProps {
@@ -20,31 +20,51 @@ export default function CartModal({
   onBack,
   onClose,
 }: CartModalProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (dialog && !dialog.open) dialog.showModal()
+    return () => {
+      if (dialog?.open) dialog.close()
+    }
+  }, [])
+
+  function handleBackdropClick(event: MouseEvent<HTMLDialogElement>) {
+    if (event.target === event.currentTarget) onClose()
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6" role="dialog" aria-modal="true" aria-labelledby="cart-title">
-      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-950 shadow-2xl">
-        <header className="flex items-center justify-between border-b border-gray-800 px-7 py-5">
+    <dialog
+      ref={dialogRef}
+      className="cart-dialog"
+      aria-labelledby="cart-title"
+      onCancel={(event) => { event.preventDefault(); onClose() }}
+      onClick={handleBackdropClick}
+    >
+      <div className="cart-dialog__shell">
+        <header className="cart-dialog__header">
           <div>
-            <h1 id="cart-title" className="text-2xl font-bold text-gray-100">{title}</h1>
-            <p className="mt-1 text-sm text-gray-400">Tu auto en buenas manos, de principio a fin.</p>
+            <h1 id="cart-title" className="cart-dialog__title">{title}</h1>
+            <p className="cart-dialog__subtitle">Tu vehículo, atendido con el cuidado que merece.</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white focus-visible:outline-2 focus-visible:outline-amber-300"
+            className="cart-dialog__close"
             aria-label="Cerrar carrito"
           >
             <X size={22} />
           </button>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_320px] overflow-y-auto">
-          <section className="min-w-0 p-7">
+        <div className="cart-dialog__body">
+          <section className="cart-dialog__content">
             {showBack ? (
               <button
                 type="button"
                 onClick={onBack}
-                className="mb-5 flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-white focus-visible:outline-2 focus-visible:outline-amber-300"
+                className="cart-back"
               >
                 <ChevronLeft size={17} />
                 Volver
@@ -52,7 +72,7 @@ export default function CartModal({
             ) : null}
 
             {error ? (
-              <p className="mb-5 rounded-xl border border-red-900 bg-red-950/60 px-4 py-3 text-sm text-red-200" role="alert">
+              <p className="cart-alert" role="alert">
                 {error}
               </p>
             ) : null}
@@ -63,6 +83,6 @@ export default function CartModal({
           {summary}
         </div>
       </div>
-    </div>
+    </dialog>
   )
 }

@@ -26,6 +26,7 @@ import OrderSummary from './components/OrderSummary'
 import PaymentStep from './components/PaymentStep'
 import ScheduleStep from './components/ScheduleStep'
 import VehicleStep from './components/VehicleStep'
+import './cart.css'
 
 interface ReservationData {
   cart: OrderDto
@@ -148,6 +149,11 @@ export default function CartPage() {
       return total + (service?.durationMinutes ?? 0) * item.quantity
     }, 0)
   }, [cartQuery.data, servicesQuery.data])
+
+  const serviceImages = useMemo(
+    () => new Map((servicesQuery.data ?? []).map((service) => [service.id, service.imageUrl ?? null])),
+    [servicesQuery.data],
+  )
 
   async function changeQuantity(itemId: string, quantity: number) {
     if (quantity < 1) return
@@ -282,6 +288,7 @@ export default function CartPage() {
       {!loading && activeStep === 'cart' ? (
         <CartItemsStep
           cart={cart}
+          serviceImages={serviceImages}
           saving={saving}
           onBrowseServices={() => navigate('/services')}
           onChangeQuantity={(itemId, quantity) => void changeQuantity(itemId, quantity)}

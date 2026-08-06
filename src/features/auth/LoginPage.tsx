@@ -11,16 +11,21 @@ const initialForm: LoginFormState = {
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { isAuthenticated, signIn } = useAuth()
+  const { isAuthenticated, role, signIn } = useAuth()
   const [form, setForm] = useState<LoginFormState>(initialForm)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/services', { replace: true })
+      const destination = role === 'Admin'
+        ? '/admin'
+        : role === 'Technician'
+          ? '/technician/appointments'
+          : '/services'
+      navigate(destination, { replace: true })
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, navigate, role])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -29,7 +34,6 @@ export default function LoginPage() {
 
     try {
       await signIn(form)
-      navigate('/services', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión')
     } finally {

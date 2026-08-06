@@ -8,13 +8,22 @@ import RegisterPage from './features/auth/RegisterPage'
 import ServicesPage from './features/services/ServicesPage'
 import VehiclesPage from './features/vehicles/VehiclesPage'
 import CartPage from './features/cart/CartPage'
-import AdminAppointmentsPage from './features/admin/AdminAppointmentsPage'
-import AdminUsersPage from './features/admin/AdminUsersPage'
-import RolesPage from './features/admin/RolesPage'
-import SchedulesPage from './features/admin/SchedulesPage'
+import AdminDashboardPage from './features/admin/AdminDashboardPage'
 import TechnicianAppointmentsPage from './features/technician/TechnicianAppointmentsPage'
 import CustomerAppointmentsPage from './features/appointments/CustomerAppointmentsPage'
 import NotFoundPage from './features/not-found/NotFoundPage'
+import { useAuth } from './contexts/useAuth'
+
+function RoleHomeRedirect() {
+  const { role } = useAuth()
+  const destination = role === 'Admin'
+    ? '/admin'
+    : role === 'Technician'
+      ? '/technician/appointments'
+      : '/services'
+
+  return <Navigate to={destination} replace />
+}
 
 function App() {
   return (
@@ -34,12 +43,13 @@ function App() {
                     <Route path="vehicles" element={<VehiclesPage />} />
                     <Route path="appointments" element={<CustomerAppointmentsPage />} />
                     <Route path="cart/*" element={<CartPage />} />
-                    <Route path="admin/appointments" element={<AdminAppointmentsPage />} />
-                    <Route path="admin/users" element={<AdminUsersPage />} />
-                    <Route path="admin/roles" element={<RolesPage />} />
-                    <Route path="admin/schedules" element={<SchedulesPage />} />
+                    <Route path="admin" element={<AdminDashboardPage />} />
+                    <Route path="admin/appointments" element={<Navigate to="/admin" replace />} />
+                    <Route path="admin/users" element={<Navigate to="/admin" replace />} />
+                    <Route path="admin/roles" element={<Navigate to="/admin" replace />} />
+                    <Route path="admin/schedules" element={<Navigate to="/admin" replace />} />
                     <Route path="technician/appointments" element={<TechnicianAppointmentsPage />} />
-                    <Route path="" element={<Navigate to="services" replace />} />
+                    <Route path="" element={<RoleHomeRedirect />} />
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </AppLayout>

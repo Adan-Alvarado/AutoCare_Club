@@ -453,6 +453,7 @@ export async function updateUserRole(
       lastName: profile.lastName,
       email: profile.email,
       roles,
+      specialty: specialty.trim() || 'General',
       password: 'Temp123!',
       confirmPassword: 'Temp123!',
       changePassword: false,
@@ -462,52 +463,11 @@ export async function updateUserRole(
   if (!result.status) {
     throw new Error(result.message || 'No se pudo actualizar el usuario')
   }
-
-  if (role === 'Technician') {
-    const techResult = await httpRequest(`/api/technicians/${userId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ specialty: specialty.trim() || 'General', isActive: true }),
-    })
-
-    if (!techResult.status) {
-      const createResult = await httpRequest('/api/technicians', {
-        method: 'POST',
-        body: JSON.stringify({ userId, specialty: specialty.trim() || 'General' }),
-      })
-
-      if (!createResult.status) {
-        throw new Error(createResult.message || 'No se pudo crear el perfil de técnico')
-      }
-    }
-  }
 }
 
 export async function getRoles(): Promise<RoleDto[]> {
   const result = await httpRequest<PageDto<RoleDto[]>>('/api/role?page=1&pageSize=100', { method: 'GET' })
   return result.data?.items ?? []
-}
-
-export async function createRole(data: RolePayload): Promise<void> {
-  const result = await httpRequest<{ id: string }>('/api/role', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-  if (!result.status) throw new Error(result.message || 'No se pudo crear el rol')
-}
-
-export async function updateRole(id: string, data: RolePayload): Promise<void> {
-  const result = await httpRequest<{ id: string }>(`/api/role/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  })
-  if (!result.status) throw new Error(result.message || 'No se pudo actualizar el rol')
-}
-
-export async function deleteRole(id: string): Promise<void> {
-  const result = await httpRequest<void>(`/api/role/${id}`, { method: 'DELETE' })
-  if (!result.status && result.statusCode !== 204) {
-    throw new Error(result.message || 'No se pudo eliminar el rol')
-  }
 }
 
 export async function getSchedules(): Promise<ScheduleDto[]> {

@@ -18,6 +18,7 @@ interface PaymentStepProps {
 
 export default function PaymentStep({ saving, method, paymentIntent, onMethodChange, onConfirm, onPaymentSuccess }: PaymentStepProps) {
   const hasStripeConfig = Boolean(paymentIntent?.publishableKey?.trim())
+  const stripeAccent = getComputedStyle(document.documentElement).getPropertyValue('--ac-brass-stripe').trim()
   const stripePromise = useMemo(
     () => (paymentIntent && hasStripeConfig ? loadStripe(paymentIntent.publishableKey) : null),
     [hasStripeConfig, paymentIntent],
@@ -26,15 +27,15 @@ export default function PaymentStep({ saving, method, paymentIntent, onMethodCha
   if (paymentIntent && hasStripeConfig && stripePromise) {
     return (
       <div>
-        <h2 className="text-xl font-bold text-gray-100">Completa el pago con tarjeta</h2>
-        <p className="mt-1 text-sm text-gray-400">El formulario es procesado de forma segura por Stripe.</p>
+        <h2 className="cart-payment-title">Completa el pago con tarjeta</h2>
+        <p className="cart-payment-copy">El formulario es procesado de forma segura por Stripe.</p>
         <Elements
           stripe={stripePromise}
           options={{
             clientSecret: paymentIntent.clientSecret,
             appearance: {
               theme: 'night',
-              variables: { colorPrimary: '#fcd34d', borderRadius: '10px' },
+              variables: { colorPrimary: stripeAccent, borderRadius: '10px' },
             },
           }}
         >
@@ -47,12 +48,12 @@ export default function PaymentStep({ saving, method, paymentIntent, onMethodCha
   if (paymentIntent && !hasStripeConfig) {
     return (
       <div>
-        <h2 className="text-xl font-bold text-gray-100">Stripe no está disponible</h2>
-        <p className="mt-2 text-sm leading-6 text-gray-400">
+        <h2 className="cart-payment-title">Stripe no está disponible</h2>
+        <p className="cart-payment-copy">
           El entorno de pago no tiene Stripe configurado. Puedes continuar con la reserva para pagar en el taller.
         </p>
-        <div className="mt-6 flex justify-end">
-          <FilledButton onClick={onConfirm} disabled={saving}>
+        <div className="cart-actions">
+          <FilledButton className="cart-action cart-action--primary" onClick={onConfirm} disabled={saving}>
             {saving ? 'Confirmando...' : 'Confirmar reserva'}
           </FilledButton>
         </div>
@@ -61,25 +62,25 @@ export default function PaymentStep({ saving, method, paymentIntent, onMethodCha
   }
 
   return (
-    <div>
-      <button type="button" onClick={() => onMethodChange('workshop')} className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left ${method === 'workshop' ? 'border-amber-300 bg-amber-300/10' : 'border-gray-800'}`} aria-pressed={method === 'workshop'}>
-        <span className="rounded-lg bg-gray-800 p-3 text-amber-300"><Banknote size={21} /></span>
-        <span className="flex-1">
-          <strong className="block text-base text-gray-100">Pagar en el taller</strong>
-          <span className="text-sm text-gray-400">Realiza el pago cuando lleves tu vehículo.</span>
+    <div className="cart-choice-list">
+      <button type="button" onClick={() => onMethodChange('workshop')} className="cart-choice" aria-pressed={method === 'workshop'}>
+        <span className="cart-choice__icon"><Banknote size={21} /></span>
+        <span className="cart-choice__content">
+          <strong className="cart-choice__title">Pagar en el taller</strong>
+          <span className="cart-choice__meta">Realiza el pago cuando lleves tu vehículo.</span>
         </span>
-        {method === 'workshop' ? <Check className="text-amber-300" size={21} /> : null}
+        {method === 'workshop' ? <Check size={21} /> : null}
       </button>
-      <button type="button" onClick={() => onMethodChange('card')} className={`mt-3 flex w-full items-center gap-4 rounded-xl border p-4 text-left ${method === 'card' ? 'border-amber-300 bg-amber-300/10' : 'border-gray-800'}`} aria-pressed={method === 'card'}>
-        <span className="rounded-lg bg-gray-800 p-3 text-amber-300"><CreditCard size={21} /></span>
-        <span className="flex-1">
-          <strong className="block text-base text-gray-100">Tarjeta</strong>
-          <span className="text-sm text-gray-400">Paga ahora de forma segura con Stripe.</span>
+      <button type="button" onClick={() => onMethodChange('card')} className="cart-choice" aria-pressed={method === 'card'}>
+        <span className="cart-choice__icon"><CreditCard size={21} /></span>
+        <span className="cart-choice__content">
+          <strong className="cart-choice__title">Tarjeta</strong>
+          <span className="cart-choice__meta">Paga ahora de forma segura con Stripe.</span>
         </span>
-        {method === 'card' ? <Check className="text-amber-300" size={21} /> : null}
+        {method === 'card' ? <Check size={21} /> : null}
       </button>
-      <div className="mt-6 flex justify-end">
-        <FilledButton onClick={onConfirm} disabled={saving}>
+      <div className="cart-actions">
+        <FilledButton className="cart-action cart-action--primary" onClick={onConfirm} disabled={saving}>
           {saving ? 'Preparando...' : method === 'card' ? 'Continuar al pago' : 'Confirmar reserva'}
         </FilledButton>
       </div>

@@ -1,22 +1,13 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '../../contexts/useAuth'
-import { addCartItem, createService, deleteService, getServices, updateService } from '../../services/api'
+import { addCartItem, getServices } from '../../services/api'
 import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import type { ServiceItem } from '../../services/api'
 import { FilledButton } from '../../components/Buttons'
-import { Pencil, Plus, Trash2, Sparkles, ShieldCheck, Clock3, Wrench } from 'lucide-react'
+import { Plus, Sparkles, ShieldCheck, Clock3, Wrench } from 'lucide-react'
 import { queryKeys } from '../../services/queryKeys'
 import { formatMoney } from '../cart/cart.utils'
-
-const initialServiceForm = {
-  name: '',
-  description: '',
-  price: '',
-  durationMinutes: '',
-  imageUrl: '',
-}
 
 const heroHighlights = [
   { label: 'Diagnóstico claro', icon: ShieldCheck },
@@ -25,91 +16,16 @@ const heroHighlights = [
 ]
 
 export default function ServicesPage() {
-  const { role } = useAuth()
-  const isAdmin = role === 'Admin'
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
-  const [form, setForm] = useState(initialServiceForm)
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingService, setEditingService] = useState<ServiceItem | null>(null)
   const queryClient = useQueryClient()
   const servicesQuery = useQuery({ queryKey: queryKeys.services, queryFn: getServices })
-  const saveServiceMutation = useMutation({
-    mutationFn: ({ service, payload }: { service: ServiceItem | null; payload: Parameters<typeof createService>[0] }) => (
-      service
-        ? updateService(service.id, { ...payload, isActive: service.isActive })
-        : createService(payload)
-    ),
-  })
-  const deleteServiceMutation = useMutation({ mutationFn: (id: string) => deleteService(id) })
   const addCartMutation = useMutation({
     mutationFn: async (service: ServiceItem) => addCartItem(service.id, 1),
   })
   const services = servicesQuery.data ?? []
   const loading = servicesQuery.isLoading
-  const submitting = saveServiceMutation.isPending || deleteServiceMutation.isPending
   const addingServiceId = addCartMutation.isPending ? addCartMutation.variables?.id ?? null : null
-
-  async function handleSaveService(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError('')
-    setFeedback('')
-
-    try {
-      const payload = {
-        name: form.name.trim(),
-        description: form.description.trim(),
-        price: Number(form.price),
-        durationMinutes: Number(form.durationMinutes),
-        imageUrl: form.imageUrl.trim() ? form.imageUrl.trim() : null,
-      }
-
-      await saveServiceMutation.mutateAsync({ service: editingService, payload })
-      await queryClient.invalidateQueries({ queryKey: queryKeys.services })
-      setForm(initialServiceForm)
-      setIsCreateOpen(false)
-      setEditingService(null)
-      setFeedback(editingService ? 'Servicio actualizado correctamente.' : 'Servicio creado correctamente.')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo crear el servicio')
-    }
-  }
-
-  function openCreate() {
-    setEditingService(null)
-    setForm(initialServiceForm)
-    setIsCreateOpen(true)
-  }
-
-  function openEdit(service: ServiceItem) {
-    setEditingService(service)
-    setForm({
-      name: service.name,
-      description: service.description,
-      price: String(service.price),
-      durationMinutes: String(service.durationMinutes),
-      imageUrl: service.imageUrl ?? '',
-    })
-    setIsCreateOpen(true)
-  }
-
-  function closeForm() {
-    setIsCreateOpen(false)
-    setEditingService(null)
-    setForm(initialServiceForm)
-  }
-
-  async function handleDelete(service: ServiceItem) {
-    if (!window.confirm(`¿Eliminar el servicio ${service.name}?`)) return
-    setError('')
-    try {
-      await deleteServiceMutation.mutateAsync(service.id)
-      setFeedback('Servicio eliminado correctamente.')
-      await queryClient.invalidateQueries({ queryKey: queryKeys.services })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo eliminar el servicio')
-    }
-  }
 
   async function addServiceToCart(service: ServiceItem) {
     setError('')
@@ -147,14 +63,6 @@ export default function ServicesPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {isAdmin ? (
-                <FilledButton onClick={openCreate} className="rounded-full px-4 py-3">
-                  <span className="flex items-center gap-2">
-                    <Plus size={16} />
-                    Crear servicio
-                  </span>
-                </FilledButton>
-              ) : null}
               <button
                 type="button"
                 onClick={() => void servicesQuery.refetch()}
@@ -226,100 +134,6 @@ export default function ServicesPage() {
           </p>
         </div>
 
-        {isCreateOpen ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="w-full max-w-2xl rounded-[24px] border border-white/10 bg-[#0b0d0f] p-6 shadow-2xl">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-100">{editingService ? 'Editar servicio' : 'Crear servicio'}</h2>
-                  <p className="text-sm text-gray-400">Completa los datos del servicio que aparecerá en el catálogo.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeForm}
-                  className="rounded-full border border-white/10 px-3 py-2 text-sm text-gray-300"
-                >
-                  Cerrar
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveService} className="flex flex-col gap-3">
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="flex flex-col gap-1 text-sm text-gray-300">
-                    Nombre
-                    <input
-                      className="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-gray-100"
-                      value={form.name}
-                      onChange={(event) => setForm({ ...form, name: event.target.value })}
-                      required
-                    />
-                  </label>
-
-                  <label className="flex flex-col gap-1 text-sm text-gray-300">
-                    Precio
-                    <input
-                      className="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-gray-100"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.price}
-                      onChange={(event) => setForm({ ...form, price: event.target.value })}
-                      required
-                    />
-                  </label>
-
-                  <label className="flex flex-col gap-1 text-sm text-gray-300 md:col-span-2">
-                    Descripción
-                    <textarea
-                      className="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-gray-100"
-                      rows={3}
-                      value={form.description}
-                      onChange={(event) => setForm({ ...form, description: event.target.value })}
-                      required
-                    />
-                  </label>
-
-                  <label className="flex flex-col gap-1 text-sm text-gray-300">
-                    Duración (minutos)
-                    <input
-                      className="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-gray-100"
-                      type="number"
-                      min="10"
-                      step="1"
-                      value={form.durationMinutes}
-                      onChange={(event) => setForm({ ...form, durationMinutes: event.target.value })}
-                      required
-                    />
-                  </label>
-
-                  <label className="flex flex-col gap-1 text-sm text-gray-300">
-                    URL de imagen
-                    <input
-                      className="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-gray-100"
-                      type="url"
-                      value={form.imageUrl}
-                      onChange={(event) => setForm({ ...form, imageUrl: event.target.value })}
-                    />
-                  </label>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={closeForm}
-                    className="rounded-full border border-white/10 px-4 py-2 text-sm text-gray-300"
-                  >
-                    Cancelar
-                  </button>
-                  <FilledButton type="submit" disabled={submitting} className="rounded-full px-4 py-2">
-                    {submitting ? 'Guardando...' : editingService ? 'Guardar cambios' : 'Crear servicio'}
-                  </FilledButton>
-                </div>
-              </form>
-            </div>
-          </div>
-        ) : null}
-
         {feedback ? (
           <p className="mb-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300" role="status">
             {feedback}
@@ -364,27 +178,16 @@ export default function ServicesPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {isAdmin ? (
-                        <>
-                          <button type="button" onClick={() => openEdit(service)} className="rounded-full border border-white/10 bg-black/40 p-2.5 text-gray-200 transition hover:bg-white/10" aria-label={`Editar ${service.name}`}>
-                            <Pencil size={16} />
-                          </button>
-                          <button type="button" onClick={() => void handleDelete(service)} disabled={submitting} className="rounded-full border border-red-500/20 bg-black/40 p-2.5 text-red-300 transition hover:bg-red-500/10" aria-label={`Eliminar ${service.name}`}>
-                            <Trash2 size={16} />
-                          </button>
-                        </>
-                      ) : (
-                        <FilledButton
-                          onClick={() => void addServiceToCart(service)}
-                          disabled={addingServiceId === service.id}
-                          className="rounded-full px-3 py-2"
-                        >
-                          <span className="flex items-center gap-2">
-                            <Plus size={16} />
-                            {addingServiceId === service.id ? 'Agregando...' : 'Reservar'}
-                          </span>
-                        </FilledButton>
-                      )}
+                      <FilledButton
+                        onClick={() => void addServiceToCart(service)}
+                        disabled={addingServiceId === service.id}
+                        className="rounded-full px-3 py-2"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Plus size={16} />
+                          {addingServiceId === service.id ? 'Agregando...' : 'Reservar'}
+                        </span>
+                      </FilledButton>
                     </div>
                   </div>
                 </div>

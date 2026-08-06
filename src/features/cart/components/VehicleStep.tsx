@@ -19,17 +19,17 @@ export default function VehicleStep({
 }: VehicleStepProps) {
   if (vehicles.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-800 p-6 text-center">
-        <CarFront className="mx-auto mb-3 text-gray-500" size={32} />
-        <h2 className="text-lg font-bold">No tienes vehículos registrados</h2>
-        <p className="mt-2 text-sm text-gray-400">Agrega uno antes de continuar con la reserva.</p>
-        <FilledButton className="mt-5" onClick={onAddVehicle}>Agregar vehículo</FilledButton>
+      <div className="cart-empty">
+        <CarFront size={32} />
+        <h2>No tienes vehículos registrados</h2>
+        <p>Agrega uno antes de continuar con la reserva.</p>
+        <FilledButton className="cart-action cart-action--primary mt-5" onClick={onAddVehicle}>Agregar vehículo</FilledButton>
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
+    <div className="cart-choice-list">
       {vehicles.map((vehicle) => {
         const selected = vehicle.id === selectedVehicleId
         return (
@@ -37,20 +37,20 @@ export default function VehicleStep({
             type="button"
             key={vehicle.id}
             onClick={() => onSelect(vehicle.id)}
-            className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-colors ${selected ? 'border-amber-300 bg-amber-300/10' : 'border-gray-800 bg-gray-900/40 hover:border-gray-700'}`}
+            className="cart-choice"
             aria-pressed={selected}
           >
-            <span className="rounded-lg bg-gray-800 p-3 text-gray-300"><CarFront size={21} /></span>
-            <span className="flex-1">
-              <strong className="block text-base text-gray-100">{vehicle.brand} · {vehicle.year}</strong>
-              <span className="text-sm text-gray-400">{vehicle.vehicleType} · {vehicle.licensePlate}</span>
+            <span className="cart-choice__icon"><CarFront size={21} /></span>
+            <span className="cart-choice__content">
+              <strong className="cart-choice__title">{vehicle.brand} · {vehicle.year}</strong>
+              <span className="cart-choice__meta">{vehicle.vehicleType} · {vehicle.licensePlate}</span>
             </span>
-            {selected ? <Check className="text-amber-300" size={21} /> : null}
+            {selected ? <Check size={21} /> : null}
           </button>
         )
       })}
-      <div className="flex justify-end pt-3">
-        <FilledButton onClick={onContinue} disabled={!selectedVehicleId}>Continuar</FilledButton>
+      <div className="cart-actions">
+        <FilledButton className="cart-action cart-action--primary" onClick={onContinue} disabled={!selectedVehicleId}>Continuar</FilledButton>
       </div>
     </div>
   )

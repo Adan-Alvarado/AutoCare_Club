@@ -1,0 +1,49 @@
+/* Hallmark · macrostructure: Workbench · tone: utilitarian · anchor hue: brass · theme: custom · fonts: Bricolage Grotesque / Manrope · nav: existing product nav · footer: existing mobile routes · honest: pass · chrome: pass · icons: pass */
+/* Hallmark · pre-emit critique: P5 H4 E4 S5 R5 V5 */
+:root {
+  --ac-ink-950: oklch(12% 0.008 80);
+  --ac-ink-900: oklch(15% 0.009 80);
+  --ac-ink-850: oklch(18% 0.01 80);
+  --ac-ink-800: oklch(22% 0.011 80);
+  --ac-ink-700: oklch(30% 0.012 80);
+  --ac-porcelain: oklch(94% 0.012 88);
+  --ac-silver: oklch(76% 0.012 155);
+  --ac-smoke: oklch(63% 0.014 155);
+  --ac-brass: oklch(72% 0.09 90);
+  --ac-brass-bright: oklch(81% 0.09 90);
+  --ac-brass-ink: oklch(16% 0.018 85);
+  --ac-oxide: oklch(62% 0.05 180);
+  --ac-success: oklch(72% 0.09 155);
+  --ac-danger: oklch(67% 0.1 25);
+  --ac-focus: oklch(84% 0.11 92);
+  --ac-overlay: oklch(5% 0.006 80 / 0.86);
+  --ac-brass-stripe: #b7a66c;
+
+  --ac-font-display: "Bricolage Grotesque", "Arial Narrow", sans-serif;
+  --ac-font-body: "Manrope", "Segoe UI", sans-serif;
+
+  --ac-space-2xs: 0.25rem;
+  --ac-space-xs: 0.5rem;
+  --ac-space-sm: 0.75rem;
+  --ac-space-md: 1rem;
+  --ac-space-lg: 1.5rem;
+  --ac-space-xl: 2.5rem;
+  --ac-space-2xl: 4rem;
+
+  --ac-radius-sm: 0.625rem;
+  --ac-radius-md: 0.875rem;
+  --ac-radius-lg: 1rem;
+  --ac-radius-pill: 999px;
+
+  --ac-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ac-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ac-duration-micro: 120ms;
+  --ac-duration-short: 220ms;
+  --ac-duration-long: 420ms;
+
+  --ac-z-base: 1;
+  --ac-z-raised: 10;
+  --ac-z-sticky: 200;
+  --ac-z-modal: 400;
+  --ac-z-toast: 500;
+}

@@ -8,10 +8,17 @@ import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
 import { getUsers, getTechnicians, updateUserRole, type UserAdminDto } from '../../services/api'
 import { queryKeys } from '../../services/queryKeys'
+import AdminSectionHeader from './components/AdminSectionHeader'
 
 const roleOptions = ['Customer', 'Technician', 'Admin'] as const
 
 type RoleOption = (typeof roleOptions)[number]
+
+const roleLabels: Record<RoleOption, string> = {
+  Customer: 'Cliente',
+  Technician: 'Técnico',
+  Admin: 'Administrador',
+}
 
 interface AdminUserRow extends UserAdminDto {
   selectedRole: RoleOption
@@ -106,6 +113,11 @@ export default function AdminUsersPage() {
       await saveMutation.mutateAsync({ user, draft })
       await Promise.all([usersQuery.refetch(), techniciansQuery.refetch()])
       await queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers })
+      setDrafts((current) => {
+        const next = { ...current }
+        delete next[user.id]
+        return next
+      })
       setFeedback(`Se actualizó el perfil de ${user.firstName} ${user.lastName}.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar el cambio')
@@ -113,33 +125,32 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <main className="content-page m-8">
-      <div className="page-header">
-        <div>
-          <h1 className="mb-2 text-4xl font-bold text-gray-200">Usuarios</h1>
-          <p className="text-gray-400">Administra los roles y la especialidad de los técnicos.</p>
-        </div>
-        <FilledButton onClick={() => void refreshUsers()} disabled={loading || usersQuery.isFetching || techniciansQuery.isFetching}>Actualizar</FilledButton>
-      </div>
+    <section className="admin-section admin-section--users" aria-labelledby="admin-users-title">
+      <AdminSectionHeader
+        id="admin-users-title"
+        title="Usuarios"
+        description="Asigna uno de los tres roles del sistema y la especialidad de los técnicos."
+        action={<FilledButton className="admin-action" onClick={() => void refreshUsers()} disabled={loading || usersQuery.isFetching || techniciansQuery.isFetching}>Actualizar</FilledButton>}
+      />
 
-      {feedback ? <p className="mb-4 text-sm text-emerald-300" role="status">{feedback}</p> : null}
-      {error || usersQuery.error || techniciansQuery.error ? <p className="error" role="alert">{error || 'No se pudieron cargar los usuarios'}</p> : null}
+      {feedback ? <p className="admin-feedback" role="status">{feedback}</p> : null}
+      {error || usersQuery.error || techniciansQuery.error ? <p className="admin-error" role="alert">{error || 'No se pudieron cargar los usuarios'}</p> : null}
       {loading ? <Loading /> : null}
       {!loading && users.length === 0 ? <EmptyState message="No hay usuarios para mostrar." /> : null}
 
       {!loading ? (
-        <div className="mt-5 space-y-3">
+        <div className="admin-list">
           {users.map((user) => (
-            <ThemedPanel key={user.id} className="rounded-2xl">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-100">{user.firstName} {user.lastName}</h2>
-                  <p className="mt-1 text-sm text-gray-400">{user.email}</p>
-                  <p className="mt-1 text-sm font-medium text-amber-300">Rol actual: {user.selectedRole}</p>
+            <ThemedPanel key={user.id} className="admin-record">
+              <div className="admin-record__layout">
+                <div className="admin-record__identity">
+                  <h3>{user.firstName} {user.lastName}</h3>
+                  <p>{user.email}</p>
+                  <p className="admin-record__accent">Rol seleccionado: {roleLabels[user.selectedRole]}</p>
                 </div>
 
-                <div className="flex flex-col gap-3 md:flex-row md:items-end">
-                  <label className="flex flex-col gap-1 text-sm text-gray-300">
+                <div className="admin-record__controls">
+                  <label className="admin-field">
                     Rol
                     <select
                       value={user.selectedRole}
@@ -147,16 +158,15 @@ export default function AdminUsersPage() {
                         const nextRole = event.target.value as RoleOption
                         updateDraft(user.id, { selectedRole: nextRole })
                       }}
-                      className="rounded-xl border border-gray-700 bg-black px-3 py-2 text-gray-100"
                     >
                       {roleOptions.map((option) => (
-                        <option key={option} value={option}>{option}</option>
+                        <option key={option} value={option}>{roleLabels[option]}</option>
                       ))}
                     </select>
                   </label>
 
                   {user.selectedRole === 'Technician' ? (
-                    <label className="flex flex-col gap-1 text-sm text-gray-300 min-w-60">
+                    <label className="admin-field">
                       Especialidad
                       <input
                         value={user.specialty}
@@ -164,12 +174,11 @@ export default function AdminUsersPage() {
                           updateDraft(user.id, { specialty: event.target.value })
                         }}
                         placeholder="Ej. Mecánica general"
-                        className="rounded-xl border border-gray-700 bg-black px-3 py-2 text-gray-100"
                       />
                     </label>
                   ) : null}
 
-                  <FilledButton onClick={() => void handleSave(user)} disabled={savingUserId === user.id}>
+                  <FilledButton className="admin-action" onClick={() => void handleSave(user)} disabled={savingUserId === user.id}>
                     {savingUserId === user.id ? 'Guardando...' : 'Guardar'}
                   </FilledButton>
                 </div>
@@ -178,6 +187,6 @@ export default function AdminUsersPage() {
           ))}
         </div>
       ) : null}
-    </main>
+    </section>
   )
 }

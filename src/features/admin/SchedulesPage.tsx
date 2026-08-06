@@ -9,6 +9,7 @@ import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
 import { createSchedule, deleteSchedule, getSchedules, updateSchedule, type ScheduleDto, type SchedulePayload } from '../../services/api'
 import { queryKeys } from '../../services/queryKeys'
+import AdminSectionHeader from './components/AdminSectionHeader'
 
 const dayLabels = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -111,47 +112,46 @@ export default function SchedulesPage() {
   }
 
   return (
-    <main className="content-page m-8">
-      <div className="page-header">
-        <div>
-          <h1 className="mb-2 text-4xl font-bold text-gray-200">Horarios</h1>
-          <p className="text-gray-400">Administra los bloques de atención disponibles para las citas.</p>
-        </div>
-        <FilledButton onClick={() => { setEditing(null); setForm(emptyForm); setFormOpen(true) }}>
-          <Plus size={16} />
-          <span className="ml-2">Crear horario</span>
-        </FilledButton>
-      </div>
+    <section className="admin-section admin-section--schedules" aria-labelledby="admin-schedules-title">
+      <AdminSectionHeader
+        id="admin-schedules-title"
+        title="Horarios"
+        description="Administra los bloques de atención disponibles para las citas."
+        action={(
+          <FilledButton className="admin-action" onClick={() => { setEditing(null); setForm(emptyForm); setFormOpen(true) }}>
+            <Plus size={16} />
+            <span className="ml-2">Crear horario</span>
+          </FilledButton>
+        )}
+      />
 
-      {feedback ? <p className="mb-4 text-sm text-emerald-300" role="status">{feedback}</p> : null}
-      {error || schedulesQuery.error ? <p className="error" role="alert">{error || (schedulesQuery.error instanceof Error ? schedulesQuery.error.message : 'No se pudieron cargar los horarios')}</p> : null}
+      {feedback ? <p className="admin-feedback" role="status">{feedback}</p> : null}
+      {error || schedulesQuery.error ? <p className="admin-error" role="alert">{error || (schedulesQuery.error instanceof Error ? schedulesQuery.error.message : 'No se pudieron cargar los horarios')}</p> : null}
       {loading ? <Loading /> : null}
       {!loading && schedules.length === 0 ? <EmptyState message="No hay horarios registrados." /> : null}
 
       {!loading ? (
-        <div className="mt-5 space-y-3">
+        <div className="admin-list">
           {schedules.map((schedule) => (
-            <ThemedPanel key={schedule.id} className="flex flex-col gap-4 rounded-2xl md:flex-row md:items-center md:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="rounded-2xl border border-gray-800 bg-gray-900/70 p-3 text-amber-300">
-                  <Clock3 size={20} />
+            <ThemedPanel key={schedule.id} className="admin-record">
+              <div className="admin-record__layout admin-record__layout--simple">
+                <div className="admin-schedule__lead">
+                  <div className="admin-schedule__icon"><Clock3 size={20} /></div>
+                  <div className="admin-record__identity">
+                    <h3>{dayLabels[schedule.dayOfWeek] ?? 'Día no definido'}</h3>
+                    <p>{toInputTime(schedule.startTime)}–{toInputTime(schedule.endTime)}</p>
+                    <p className="admin-record__accent">{schedule.isAvailable ? 'Disponible' : 'No disponible'}</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-100">{dayLabels[schedule.dayOfWeek] ?? 'Día no definido'}</h2>
-                  <p className="mt-1 text-sm text-gray-400">
-                    {toInputTime(schedule.startTime)} - {toInputTime(schedule.endTime)}
-                  </p>
-                  <p className="mt-1 text-sm text-amber-300">{schedule.isAvailable ? 'Disponible' : 'No disponible'}</p>
-                </div>
-              </div>
 
-              <div className="flex gap-2">
-                <button type="button" onClick={() => openEdit(schedule)} className="rounded-xl border border-gray-700 p-3 hover:bg-gray-800" aria-label={`Editar ${dayLabels[schedule.dayOfWeek]}`}>
-                  <Pencil size={16} />
-                </button>
-                <button type="button" onClick={() => void removeSchedule(schedule)} disabled={saving} className="rounded-xl border border-red-900 p-3 text-red-300 hover:bg-red-950" aria-label={`Eliminar ${dayLabels[schedule.dayOfWeek]}`}>
-                  <Trash2 size={16} />
-                </button>
+                <div className="admin-icon-actions">
+                  <button type="button" onClick={() => openEdit(schedule)} className="admin-icon-button" aria-label={`Editar ${dayLabels[schedule.dayOfWeek]}`}>
+                    <Pencil size={16} />
+                  </button>
+                  <button type="button" onClick={() => void removeSchedule(schedule)} disabled={saving} className="admin-icon-button admin-icon-button--danger" aria-label={`Eliminar ${dayLabels[schedule.dayOfWeek]}`}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             </ThemedPanel>
           ))}
@@ -159,63 +159,42 @@ export default function SchedulesPage() {
       ) : null}
 
       {formOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <form onSubmit={saveSchedule} className="w-full max-w-lg rounded-2xl border border-gray-800 bg-gray-950 p-6 shadow-2xl">
-            <h2 className="text-xl font-bold text-gray-100">{editing ? 'Editar horario' : 'Crear horario'}</h2>
+        <div className="admin-modal" role="dialog" aria-modal="true" aria-labelledby="schedule-form-title">
+          <form onSubmit={saveSchedule} className="admin-modal__form">
+            <h3 id="schedule-form-title">{editing ? 'Editar horario' : 'Crear horario'}</h3>
 
-            <label className="mt-5 flex flex-col gap-1 text-sm text-gray-300">
+            <label className="admin-field">
               Día
-              <select
-                value={form.dayOfWeek}
-                onChange={(event) => setForm({ ...form, dayOfWeek: Number(event.target.value) })}
-                className="rounded-xl border border-gray-700 bg-black px-3 py-2 text-gray-100"
-              >
+              <select value={form.dayOfWeek} onChange={(event) => setForm({ ...form, dayOfWeek: Number(event.target.value) })}>
                 {dayLabels.map((label, index) => (
                   <option key={label} value={index}>{label}</option>
                 ))}
               </select>
             </label>
 
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <label className="flex flex-col gap-1 text-sm text-gray-300">
+            <div className="admin-modal__grid">
+              <label className="admin-field">
                 Hora de inicio
-                <input
-                  type="time"
-                  value={form.startTime}
-                  onChange={(event) => setForm({ ...form, startTime: event.target.value })}
-                  className="rounded-xl border border-gray-700 bg-black px-3 py-2 text-gray-100"
-                  required
-                />
+                <input type="time" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} required />
               </label>
-              <label className="flex flex-col gap-1 text-sm text-gray-300">
+              <label className="admin-field">
                 Hora final
-                <input
-                  type="time"
-                  value={form.endTime}
-                  onChange={(event) => setForm({ ...form, endTime: event.target.value })}
-                  className="rounded-xl border border-gray-700 bg-black px-3 py-2 text-gray-100"
-                  required
-                />
+                <input type="time" value={form.endTime} onChange={(event) => setForm({ ...form, endTime: event.target.value })} required />
               </label>
             </div>
 
-            <label className="mt-4 flex items-center gap-2 text-sm text-gray-300">
-              <input
-                type="checkbox"
-                checked={form.isAvailable}
-                onChange={(event) => setForm({ ...form, isAvailable: event.target.checked })}
-                className="h-4 w-4 rounded border-gray-700 bg-black"
-              />
+            <label className="admin-modal__availability">
+              <input type="checkbox" checked={form.isAvailable} onChange={(event) => setForm({ ...form, isAvailable: event.target.checked })} />
               Disponible para reservas
             </label>
 
-            <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={closeForm} className="rounded-xl border border-gray-700 px-4 py-2 text-sm text-gray-300">Cancelar</button>
-              <FilledButton type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar horario'}</FilledButton>
+            <div className="admin-modal__actions">
+              <button type="button" onClick={closeForm} className="admin-text-button">Cancelar</button>
+              <FilledButton className="admin-action" type="submit" disabled={saving}>{saving ? 'Guardando…' : 'Guardar horario'}</FilledButton>
             </div>
           </form>
         </div>
       ) : null}
-    </main>
+    </section>
   )
 }

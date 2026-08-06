@@ -16,12 +16,12 @@ export default function ConfirmationStep({
   onFinish,
 }: ConfirmationStepProps) {
   return (
-    <div className="flex min-h-80 flex-col items-center justify-center text-center">
-      <CheckCircle2 className="mb-4 text-emerald-400" size={48} />
-      <h2 className="text-2xl font-bold text-gray-100">Tu reserva quedó registrada</h2>
-      <p className="mt-2 max-w-md text-sm text-gray-400">Te esperamos el {formatDate(date)} a las {formatTime(startTime)}.</p>
-      <p className="mt-4 text-xs text-gray-500">Orden: {orderId}</p>
-      <FilledButton className="mt-6" onClick={onFinish}>Finalizar</FilledButton>
+    <div className="cart-confirmation">
+      <CheckCircle2 size={48} />
+      <h2>Tu reserva quedó registrada</h2>
+      <p>Te esperamos el {formatDate(date)} a las {formatTime(startTime)}.</p>
+      <p>Orden: {orderId}</p>
+      <FilledButton className="cart-action cart-action--primary mt-6" onClick={onFinish}>Finalizar</FilledButton>
     </div>
   )
 }

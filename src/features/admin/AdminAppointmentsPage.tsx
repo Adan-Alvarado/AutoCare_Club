@@ -15,6 +15,7 @@ import {
   type TechnicianDto,
 } from '../../services/api'
 import { queryKeys } from '../../services/queryKeys'
+import AdminSectionHeader from './components/AdminSectionHeader'
 
 const statuses: AppointmentStatus[] = ['Pending', 'Confirmed', 'InProgress', 'Completed', 'Cancelled']
 const statusLabels: Record<AppointmentStatus, string> = {
@@ -90,54 +91,53 @@ export default function AdminAppointmentsPage() {
   }
 
   return (
-    <main className="content-page m-8">
-      <div className="page-header">
-        <div>
-          <h1 className="mb-2 text-4xl font-bold text-gray-200">Administrar citas</h1>
-          <p className="text-gray-400">Asigna un técnico y actualiza el estado de cada servicio.</p>
-        </div>
-        <FilledButton onClick={() => void refreshData()} disabled={appointmentsQuery.isFetching || servicesQuery.isFetching || techniciansQuery.isFetching}>Actualizar</FilledButton>
-      </div>
+    <section className="admin-section admin-section--appointments" aria-labelledby="admin-appointments-title">
+      <AdminSectionHeader
+        id="admin-appointments-title"
+        title="Citas"
+        description="Asigna un técnico y actualiza el estado de cada servicio."
+        action={<FilledButton className="admin-action" onClick={() => void refreshData()} disabled={appointmentsQuery.isFetching || servicesQuery.isFetching || techniciansQuery.isFetching}>Actualizar</FilledButton>}
+      />
 
-      {feedback ? <p className="mb-4 text-sm text-emerald-300" role="status">{feedback}</p> : null}
-      {error || appointmentsQuery.error || servicesQuery.error || techniciansQuery.error ? <p className="error" role="alert">{error || 'No se pudieron cargar los datos de las citas'}</p> : null}
+      {feedback ? <p className="admin-feedback" role="status">{feedback}</p> : null}
+      {error || appointmentsQuery.error || servicesQuery.error || techniciansQuery.error ? <p className="admin-error" role="alert">{error || 'No se pudieron cargar los datos de las citas'}</p> : null}
       {loading ? <Loading /> : null}
       {!loading && appointments.length === 0 ? <EmptyState message="No hay citas registradas." /> : null}
 
       {!loading && appointments.length > 0 ? (
-        <div className="mt-5 space-y-4">
+        <div className="admin-list">
           {appointments.map((appointment) => {
             const draft = drafts[appointment.id] ?? { status: appointment.status, technicianId: appointment.technicianId ?? '' }
             return (
-              <ThemedPanel key={appointment.id} className="rounded-2xl">
-                <div className="flex flex-wrap items-start justify-between gap-5">
-                  <div className="min-w-64 flex-1">
-                    <div className="flex items-center gap-2 text-gray-400">
+              <ThemedPanel key={appointment.id} className="admin-record">
+                <div className="admin-record__layout">
+                  <div className="admin-record__identity">
+                    <div className="admin-record__meta">
                       <CalendarDays size={17} />
                       <span>{appointment.appointmentDate} · {appointment.startTime.slice(0, 5)}</span>
                     </div>
-                    <h2 className="mt-2 text-xl font-bold text-gray-100">{serviceNames.get(appointment.serviceId) ?? 'Servicio'}</h2>
-                    <p className="mt-1 text-sm text-gray-400">Cita {appointment.id.slice(0, 8)}</p>
+                    <h3>{serviceNames.get(appointment.serviceId) ?? 'Servicio'}</h3>
+                    <p>Cita {appointment.id.slice(0, 8)}</p>
                   </div>
 
                   {draft ? (
-                    <div className="grid min-w-130 grid-cols-[1fr_1fr_auto] items-end gap-3">
-                      <label className="flex flex-col gap-1 text-sm text-gray-300">
+                    <div className="admin-record__controls">
+                      <label className="admin-field">
                         Técnico
-                        <select value={draft.technicianId} onChange={(event) => updateDraft(appointment.id, { technicianId: event.target.value })} className="rounded-xl border border-gray-700 bg-black px-3 py-2 text-gray-100">
+                        <select value={draft.technicianId} onChange={(event) => updateDraft(appointment.id, { technicianId: event.target.value })}>
                           <option value="">Sin asignar</option>
                           {technicians.map((technician) => (
                             <option key={technician.userId} value={technician.userId}>{technician.firstName} {technician.lastName}</option>
                           ))}
                         </select>
                       </label>
-                      <label className="flex flex-col gap-1 text-sm text-gray-300">
+                      <label className="admin-field">
                         Estado
-                        <select value={draft.status} onChange={(event) => updateDraft(appointment.id, { status: event.target.value as AppointmentStatus })} className="rounded-xl border border-gray-700 bg-black px-3 py-2 text-gray-100">
+                        <select value={draft.status} onChange={(event) => updateDraft(appointment.id, { status: event.target.value as AppointmentStatus })}>
                           {statuses.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}
                         </select>
                       </label>
-                      <FilledButton onClick={() => void saveAppointment(appointment)} disabled={savingId === appointment.id}>
+                      <FilledButton className="admin-action" onClick={() => void saveAppointment(appointment)} disabled={savingId === appointment.id}>
                         <Save size={16} />
                         <span className="ml-2">{savingId === appointment.id ? 'Guardando...' : 'Guardar'}</span>
                       </FilledButton>
@@ -149,6 +149,6 @@ export default function AdminAppointmentsPage() {
           })}
         </div>
       ) : null}
-    </main>
+    </section>
   )
 }

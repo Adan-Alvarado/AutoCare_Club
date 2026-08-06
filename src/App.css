@@ -34,3 +34,52 @@ label {
   font-size: 0.75rem;
   font-weight: 700;
 }
+
+html {
+  font-family: var(--ac-font-body);
+  color: var(--ac-porcelain);
+  background: var(--ac-ink-950);
+  overflow-x: clip;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--ac-ink-950);
+  overflow-x: clip;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--ac-focus);
+  outline-offset: 2px;
+}
+
+input {
+  border-color: var(--ac-ink-700);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 150ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 150ms !important;
+  }
+}

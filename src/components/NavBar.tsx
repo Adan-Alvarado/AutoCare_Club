@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../contexts/useAuth'
 import { BorderButton } from './Buttons'
 import { LogOut, ShoppingBag } from 'lucide-react'
@@ -9,12 +9,13 @@ export default function NavBar() {
   const navigate = useNavigate()
   const isAdmin = role === 'Admin'
   const isTechnician = role === 'Technician'
+  const homePath = isTechnician ? '/technician/appointments' : isAdmin ? '/admin' : '/services'
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#040607]/90 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-3">
-          <Link to="/services" className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 p-2">
+          <Link to={homePath} className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 p-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-300 text-sm font-semibold text-[#040607]">
               AC
             </div>
@@ -54,25 +55,5 @@ export default function NavBar() {
         </div>
       </div>
     </header>
-  )
-}
-
-export const NavButton = ({ to, children }: { to: string; children: React.ReactNode }) => {
-  const location = useLocation()
-  const isActive = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/'
-    }
-
-    return location.pathname.startsWith(path)
-  }
-
-  return (
-    <Link
-      to={to}
-      className={`rounded-full px-3 py-2 text-sm font-medium transition ${isActive(to) ? 'bg-amber-300 text-[#040607]' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-    >
-      {children}
-    </Link>
   )
 }
