@@ -13,6 +13,7 @@ import {
   getServices,
   getVehicles,
   updateCartItem,
+  verifyCheckoutSession,
   type OrderDto,
   type PaymentIntentDto,
   type ScheduleAvailabilityDto,
@@ -125,6 +126,19 @@ export default function CartPage() {
   const loading = cartQuery.isLoading || servicesQuery.isLoading || (activeStep === 'vehicle' && vehiclesQuery.isLoading)
   const queryError = [cartQuery.error, servicesQuery.error, vehiclesQuery.error, schedulesQuery.error]
     .find((value) => value instanceof Error)
+
+  useEffect(() => {
+    const sessionId = searchParams.get('session_id')
+    if (sessionId) {
+      verifyCheckoutSession(sessionId)
+        .then(() => {
+          queryClient.setQueryData(queryKeys.cart, null)
+        })
+        .catch((err) => {
+          console.error('Error al verificar la sesion de Stripe:', err)
+        })
+    }
+  }, [searchParams, queryClient])
 
   useEffect(() => {
     if (!step || loading) return
