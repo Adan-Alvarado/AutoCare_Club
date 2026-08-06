@@ -217,12 +217,24 @@ export default function CartPage() {
     try {
       const order = await prepareOrder()
       if (!order) return
+
       if (paymentMethod === 'card') {
-        setPaymentIntent(await paymentIntentMutation.mutateAsync(order.id))
-      } else {
-        setCompletedOrder(order)
-        navigate(cartPath('confirmation'))
+        try {
+          const intent = await paymentIntentMutation.mutateAsync(order.id)
+          setPaymentIntent(intent)
+          return
+        } catch (e) {
+          setPaymentIntent(null)
+          setPaymentMethod('workshop')
+          setCompletedOrder(order)
+          navigate(cartPath('confirmation'))
+          setError('Stripe no está disponible en este momento. La reserva se confirmó para pago en el taller.' + (e instanceof Error ? ` (${e.message})` : ''))
+          return
+        }
       }
+
+      setCompletedOrder(order)
+      navigate(cartPath('confirmation'))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo confirmar la reserva')
     }

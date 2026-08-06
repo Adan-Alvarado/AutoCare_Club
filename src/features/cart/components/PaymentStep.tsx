@@ -17,12 +17,13 @@ interface PaymentStepProps {
 }
 
 export default function PaymentStep({ saving, method, paymentIntent, onMethodChange, onConfirm, onPaymentSuccess }: PaymentStepProps) {
+  const hasStripeConfig = Boolean(paymentIntent?.publishableKey?.trim())
   const stripePromise = useMemo(
-    () => paymentIntent ? loadStripe(paymentIntent.publishableKey) : null,
-    [paymentIntent],
+    () => (paymentIntent && hasStripeConfig ? loadStripe(paymentIntent.publishableKey) : null),
+    [hasStripeConfig, paymentIntent],
   )
 
-  if (paymentIntent && stripePromise) {
+  if (paymentIntent && hasStripeConfig && stripePromise) {
     return (
       <div>
         <h2 className="text-xl font-bold text-gray-100">Completa el pago con tarjeta</h2>
@@ -39,6 +40,22 @@ export default function PaymentStep({ saving, method, paymentIntent, onMethodCha
         >
           <StripePaymentForm onSuccess={onPaymentSuccess} />
         </Elements>
+      </div>
+    )
+  }
+
+  if (paymentIntent && !hasStripeConfig) {
+    return (
+      <div>
+        <h2 className="text-xl font-bold text-gray-100">Stripe no está disponible</h2>
+        <p className="mt-2 text-sm leading-6 text-gray-400">
+          El entorno de pago no tiene Stripe configurado. Puedes continuar con la reserva para pagar en el taller.
+        </p>
+        <div className="mt-6 flex justify-end">
+          <FilledButton onClick={onConfirm} disabled={saving}>
+            {saving ? 'Confirmando...' : 'Confirmar reserva'}
+          </FilledButton>
+        </div>
       </div>
     )
   }

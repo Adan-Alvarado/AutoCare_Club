@@ -11,6 +11,7 @@ import CartPage from './features/cart/CartPage'
 import AdminAppointmentsPage from './features/admin/AdminAppointmentsPage'
 import AdminUsersPage from './features/admin/AdminUsersPage'
 import RolesPage from './features/admin/RolesPage'
+import SchedulesPage from './features/admin/SchedulesPage'
 import TechnicianAppointmentsPage from './features/technician/TechnicianAppointmentsPage'
 import CustomerAppointmentsPage from './features/appointments/CustomerAppointmentsPage'
 import NotFoundPage from './features/not-found/NotFoundPage'
@@ -36,6 +37,7 @@ function App() {
                     <Route path="admin/appointments" element={<AdminAppointmentsPage />} />
                     <Route path="admin/users" element={<AdminUsersPage />} />
                     <Route path="admin/roles" element={<RolesPage />} />
+                    <Route path="admin/schedules" element={<SchedulesPage />} />
                     <Route path="technician/appointments" element={<TechnicianAppointmentsPage />} />
                     <Route path="" element={<Navigate to="services" replace />} />
                     <Route path="*" element={<NotFoundPage />} />

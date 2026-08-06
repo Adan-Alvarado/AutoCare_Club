@@ -131,6 +131,21 @@ export interface RolePayload {
   description: string
 }
 
+export interface ScheduleDto {
+  id: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  isAvailable: boolean
+}
+
+export interface SchedulePayload {
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  isAvailable: boolean
+}
+
 export interface TechnicianDto {
   userId: string
   firstName: string
@@ -492,6 +507,34 @@ export async function deleteRole(id: string): Promise<void> {
   const result = await httpRequest<void>(`/api/role/${id}`, { method: 'DELETE' })
   if (!result.status && result.statusCode !== 204) {
     throw new Error(result.message || 'No se pudo eliminar el rol')
+  }
+}
+
+export async function getSchedules(): Promise<ScheduleDto[]> {
+  const result = await httpRequest<ScheduleDto[]>('/api/schedules', { method: 'GET' })
+  return result.data ?? []
+}
+
+export async function createSchedule(data: SchedulePayload): Promise<void> {
+  const result = await httpRequest<{ id: string }>('/api/schedules', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+  if (!result.status) throw new Error(result.message || 'No se pudo crear el horario')
+}
+
+export async function updateSchedule(id: string, data: SchedulePayload): Promise<void> {
+  const result = await httpRequest<{ id: string }>(`/api/schedules/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+  if (!result.status) throw new Error(result.message || 'No se pudo actualizar el horario')
+}
+
+export async function deleteSchedule(id: string): Promise<void> {
+  const result = await httpRequest<void>(`/api/schedules/${id}`, { method: 'DELETE' })
+  if (!result.status && result.statusCode !== 204) {
+    throw new Error(result.message || 'No se pudo eliminar el horario')
   }
 }
 
