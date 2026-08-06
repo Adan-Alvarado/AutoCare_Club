@@ -174,6 +174,15 @@ export interface PaymentIntentDto {
   status: string
 }
 
+export interface CheckoutSessionDto {
+  sessionId: string
+  url: string
+  publishableKey: string
+  amount: number
+  currency: string
+  status: string
+}
+
 export async function loginUser(email: string, password: string): Promise<LoginResponseData> {
   const result = await httpRequest<LoginResponseData>('/api/auth/login', {
     method: 'POST',
@@ -504,6 +513,16 @@ export async function createPaymentIntent(orderId: string): Promise<PaymentInten
   })
   if (!result.status || !result.data) {
     throw new Error(result.message || 'No se pudo preparar el pago con tarjeta')
+  }
+  return result.data
+}
+
+export async function createCheckoutSession(orderId: string): Promise<CheckoutSessionDto> {
+  const result = await httpRequest<CheckoutSessionDto>(`/api/payments/orders/${orderId}/checkout-session`, {
+    method: 'POST',
+  })
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo generar la página de pago con tarjeta')
   }
   return result.data
 }
