@@ -1,3 +1,4 @@
 export default function EmptyState({ message }: { message: string }) {
-  return <p className="empty-state">{message}</p>
+  // Evita pantallas silenciosas cuando una consulta devuelve una colección vacía.
+  return <p className="ac-empty-state">{message}</p>
 }

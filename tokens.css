@@ -18,6 +18,11 @@
   --ac-focus: oklch(84% 0.11 92);
   --ac-overlay: oklch(5% 0.006 80 / 0.86);
   --ac-brass-stripe: #b7a66c;
+  --ac-border: var(--ac-ink-700);
+  --ac-surface: var(--ac-ink-900);
+  --ac-surface-raised: var(--ac-ink-850);
+  --ac-text: var(--ac-porcelain);
+  --ac-text-muted: var(--ac-silver);
 
   --ac-font-display: "Bricolage Grotesque", "Arial Narrow", sans-serif;
   --ac-font-body: "Manrope", "Segoe UI", sans-serif;

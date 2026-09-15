@@ -9,7 +9,15 @@ Currently, two official plugins are available:
 
 ## React Compiler
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+React Compiler nativo está habilitado mediante `@vitejs/plugin-react` y `oxc-transform-react`, el puerto Rust/Oxc. Esta integración se considera experimental por el plugin oficial; `logDiagnostics` deja visibles diagnósticos recuperables durante desarrollo. El lint informa de patrones que el compilador debe omitir. Ver [documentación del plugin](https://www.npmjs.com/package/@vitejs/plugin-react) y la [guía oficial de React](https://react.dev/learn/react-compiler/installation).
+
+## Mejora visual
+
+La fase 1 del plan está aplicada. La interfaz comparte una base para botones, campos, alertas, paneles, bordes y tipografía. Los componentes viven en `src/components/ui` y mantienen una API de variantes sencilla para que las pantallas se migren sin cambios bruscos.
+
+El inicio de sesión y el registro son los primeros flujos migrados. Las pantallas restantes siguen usando los adaptadores existentes de botones y paneles, por lo que reciben la misma apariencia mientras se actualizan de forma gradual.
+
+La configuración en `components.json` y el alias `@/` dejan listo el proyecto para añadir componentes de shadcn/ui cuando haga falta, sin introducir dependencias para controles nativos que ya cubre esta fase.
 
 ## Expanding the ESLint configuration
 
