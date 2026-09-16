@@ -6,6 +6,7 @@ import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
+import { Select } from '../../components/ui/select'
 import { getUsers, getTechnicians, updateUserRole, type UserAdminDto } from '../../services/api'
 import { queryKeys } from '../../services/queryKeys'
 import AdminSectionHeader from './components/AdminSectionHeader'
@@ -31,6 +32,7 @@ interface UserDraft {
 }
 
 export default function AdminUsersPage() {
+  // Los roles y especialidades se modifican desde administración, no desde el perfil público.
   const { role } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -152,7 +154,7 @@ export default function AdminUsersPage() {
                 <div className="admin-record__controls">
                   <label className="admin-field">
                     Rol
-                    <select
+                    <Select
                       value={user.selectedRole}
                       onChange={(event) => {
                         const nextRole = event.target.value as RoleOption
@@ -162,7 +164,7 @@ export default function AdminUsersPage() {
                       {roleOptions.map((option) => (
                         <option key={option} value={option}>{roleLabels[option]}</option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
 
                   {user.selectedRole === 'Technician' ? (

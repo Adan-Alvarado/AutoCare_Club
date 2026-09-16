@@ -5,6 +5,7 @@ import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
+import { AlertDialog } from '../../components/ui/alert-dialog'
 import {
   createService,
   deleteService,
@@ -25,12 +26,14 @@ const emptyForm = {
 }
 
 export default function AdminServicesPage() {
+  // El modal reutiliza el mismo estado para crear o editar servicios del catálogo.
   const queryClient = useQueryClient()
   const [form, setForm] = useState(emptyForm)
   const [editingService, setEditingService] = useState<ServiceItem | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [serviceToDelete, setServiceToDelete] = useState<ServiceItem | null>(null)
 
   const servicesQuery = useQuery({ queryKey: queryKeys.services, queryFn: getServices })
   const saveMutation = useMutation({
@@ -91,18 +94,20 @@ export default function AdminServicesPage() {
     }
   }
 
-  async function handleDelete(service: ServiceItem) {
-    if (!window.confirm(`¿Eliminar el servicio ${service.name}?`)) return
-
+  async function confirmServiceDeletion() {
+    if (!serviceToDelete) return
     setError('')
     setFeedback('')
     try {
-      await deleteMutation.mutateAsync(service.id)
+      await deleteMutation.mutateAsync(serviceToDelete.id)
       await queryClient.invalidateQueries({ queryKey: queryKeys.services })
       setFeedback('Servicio eliminado correctamente.')
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'No se pudo eliminar el servicio.')
     }
+
+    // El diálogo se cierra tras éxito o error sin usar finally, aún no soportado por el compilador.
+    setServiceToDelete(null)
   }
 
   return (
@@ -183,7 +188,7 @@ export default function AdminServicesPage() {
                   <button
                     type="button"
                     className="admin-icon-button admin-icon-button--danger"
-                    onClick={() => void handleDelete(service)}
+                    onClick={() => setServiceToDelete(service)}
                     disabled={submitting}
                     aria-label={`Eliminar ${service.name}`}
                     title={`Eliminar ${service.name}`}
@@ -261,6 +266,16 @@ export default function AdminServicesPage() {
           </form>
         </div>
       ) : null}
+      {/* Protege la eliminación del catálogo con una decisión explícita. */}
+      <AlertDialog
+        open={Boolean(serviceToDelete)}
+        title="Eliminar servicio"
+        description={serviceToDelete ? `Se eliminará ${serviceToDelete.name} del catálogo.` : ''}
+        confirmLabel="Eliminar servicio"
+        pending={deleteMutation.isPending}
+        onCancel={() => setServiceToDelete(null)}
+        onConfirm={() => void confirmServiceDeletion()}
+      />
     </section>
   )
 }

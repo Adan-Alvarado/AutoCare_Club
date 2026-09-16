@@ -89,6 +89,34 @@ textarea:focus-visible {
 .ac-input::placeholder { color: var(--ac-smoke); }
 .ac-input:focus { border-color: var(--ac-brass); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ac-focus), transparent 76%); outline: none; }
 
+/* Campos de selección: comparten altura, foco y contraste con Input. */
+.ac-select { width: 100%; min-height: var(--ac-interactive-min); border: 1px solid var(--ac-border); border-radius: var(--ac-radius-sm); background: var(--ac-surface-raised); color: var(--ac-text); padding: 0.65rem 0.75rem; }
+.ac-select:focus { border-color: var(--ac-brass); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ac-focus), transparent 76%); outline: none; }
+
+/* Estados compactos: el texto siempre acompaña el color semántico. */
+.ac-badge { display: inline-flex; align-items: center; min-height: 1.5rem; border: 1px solid var(--ac-border); border-radius: var(--ac-radius-pill); padding: 0.125rem 0.5rem; font-size: 0.75rem; font-weight: 700; }
+.ac-badge--default { background: color-mix(in oklch, var(--ac-brass), var(--ac-surface) 84%); color: var(--ac-brass-bright); }
+.ac-badge--success { background: color-mix(in oklch, var(--ac-success), var(--ac-surface) 85%); color: var(--ac-porcelain); }
+.ac-badge--warning { background: color-mix(in oklch, var(--ac-brass), var(--ac-surface) 85%); color: var(--ac-porcelain); }
+.ac-badge--danger { background: color-mix(in oklch, var(--ac-danger), var(--ac-surface) 85%); color: var(--ac-porcelain); }
+.ac-badge--neutral { background: var(--ac-ink-800); color: var(--ac-silver); }
+
+/* Carga estructural: evita saltos de layout y respeta movimiento reducido. */
+.ac-skeleton { min-height: 1rem; border-radius: var(--ac-radius-sm); background: linear-gradient(90deg, var(--ac-ink-850), var(--ac-ink-800), var(--ac-ink-850)); background-size: 200% 100%; animation: ac-shimmer 1.2s linear infinite; }
+@keyframes ac-shimmer { to { background-position: -200% 0; } }
+
+/* Overlays nativos: el navegador gestiona foco y Escape; el estilo mantiene la identidad. */
+.ac-dialog, .ac-sheet { border: 0; background: transparent; color: var(--ac-text); padding: 0; }
+.ac-dialog::backdrop, .ac-sheet::backdrop { background: var(--ac-overlay); }
+.ac-dialog__content { width: min(32rem, calc(100vw - 2rem)); border: 1px solid var(--ac-border); border-radius: var(--ac-radius-md); background: var(--ac-surface); padding: var(--ac-space-lg); }
+.ac-dialog__header h2, .ac-sheet__header h2 { font-family: var(--ac-font-display); font-size: 1.35rem; }
+.ac-dialog__header p { margin-top: var(--ac-space-xs); color: var(--ac-silver); }
+.ac-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--ac-space-sm); margin-top: var(--ac-space-lg); }
+.ac-sheet { width: min(24rem, calc(100vw - 1rem)); height: 100dvh; margin: 0 0 0 auto; }
+.ac-sheet__content { min-height: 100%; background: var(--ac-surface); border-left: 1px solid var(--ac-border); }
+.ac-sheet__header { display: flex; align-items: center; justify-content: space-between; gap: var(--ac-space-md); padding: var(--ac-space-lg); border-bottom: 1px solid var(--ac-border); }
+.ac-sheet__body { padding: var(--ac-space-lg); }
+
 .ac-card {
   border: 1px solid var(--ac-border);
   border-radius: var(--ac-radius-md);

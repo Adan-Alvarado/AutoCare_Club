@@ -23,6 +23,29 @@
   --ac-surface-raised: var(--ac-ink-850);
   --ac-text: var(--ac-porcelain);
   --ac-text-muted: var(--ac-silver);
+  --ac-info: var(--ac-oxide);
+  --ac-interactive-min: 2.75rem;
+
+  /* Equivalencias semánticas para primitives compatibles con shadcn. */
+  --background: var(--ac-ink-950);
+  --foreground: var(--ac-porcelain);
+  --card: var(--ac-ink-900);
+  --card-foreground: var(--ac-porcelain);
+  --popover: var(--ac-ink-850);
+  --popover-foreground: var(--ac-porcelain);
+  --primary: var(--ac-brass);
+  --primary-foreground: var(--ac-brass-ink);
+  --secondary: var(--ac-ink-850);
+  --secondary-foreground: var(--ac-porcelain);
+  --muted: var(--ac-ink-800);
+  --muted-foreground: var(--ac-silver);
+  --accent: var(--ac-oxide);
+  --accent-foreground: var(--ac-porcelain);
+  --destructive: var(--ac-danger);
+  --destructive-foreground: var(--ac-porcelain);
+  --border: var(--ac-ink-700);
+  --input: var(--ac-ink-700);
+  --ring: var(--ac-focus);
 
   --ac-font-display: "Bricolage Grotesque", "Arial Narrow", sans-serif;
   --ac-font-body: "Manrope", "Segoe UI", sans-serif;

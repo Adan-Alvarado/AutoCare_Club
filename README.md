@@ -13,11 +13,11 @@ React Compiler nativo está habilitado mediante `@vitejs/plugin-react` y `oxc-tr
 
 ## Mejora visual
 
-La fase 1 del plan está aplicada. La interfaz comparte una base para botones, campos, alertas, paneles, bordes y tipografía. Los componentes viven en `src/components/ui` y mantienen una API de variantes sencilla para que las pantallas se migren sin cambios bruscos.
+La base visual está aplicada de forma incremental. La interfaz comparte botones, campos, alertas, paneles, bordes y tipografía. Los componentes viven en `src/components/ui` y mantienen una API de variantes sencilla para que las pantallas se migren sin cambios bruscos.
 
 El inicio de sesión y el registro son los primeros flujos migrados. Las pantallas restantes siguen usando los adaptadores existentes de botones y paneles, por lo que reciben la misma apariencia mientras se actualizan de forma gradual.
 
-La configuración en `components.json` y el alias `@/` dejan listo el proyecto para añadir componentes de shadcn/ui cuando haga falta, sin introducir dependencias para controles nativos que ya cubre esta fase.
+La configuración en `components.json`, los alias `@/` y el CLI de shadcn permiten añadir componentes de forma controlada. Ya se incorporaron Select, Badge, Skeleton, Sheet y AlertDialog; Sheet y Skeleton quedan disponibles para la primera pantalla que los necesite. La revisión completa de escritorio, teclado y contraste sigue pendiente.
 
 ## Expanding the ESLint configuration
 

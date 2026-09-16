@@ -5,6 +5,7 @@ import { BorderButton, FilledButton } from "../../components/Buttons";
 import EmptyState from "../../components/EmptyState";
 import Loading from "../../components/Loading";
 import { ThemedPanel } from "../../components/Panel";
+import { AlertDialog } from "../../components/ui/alert-dialog";
 import {
   cancelAppointment,
   getMyAppointments,
@@ -42,8 +43,10 @@ function formatDate(date: string) {
 }
 
 export default function CustomerAppointmentsPage() {
+  // Reúne citas, servicios y vehículos para mostrar nombres legibles en lugar de ids.
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const appointmentsQuery = useQuery({
     queryKey: queryKeys.customerAppointments,
@@ -95,14 +98,13 @@ export default function CustomerAppointmentsPage() {
     ]);
   }
 
-  async function handleCancel(id: string) {
-    if (!window.confirm("¿Deseas cancelar esta cita?")) return;
-
+  async function confirmCancellation() {
+    if (!appointmentToCancel) return;
     setError("");
     setFeedback("");
 
     try {
-      await cancelMutation.mutateAsync(id);
+      await cancelMutation.mutateAsync(appointmentToCancel);
       await queryClient.invalidateQueries({
         queryKey: queryKeys.customerAppointments,
       });
@@ -112,6 +114,9 @@ export default function CustomerAppointmentsPage() {
         err instanceof Error ? err.message : "No se pudo cancelar la cita",
       );
     }
+
+    // El diálogo se cierra tras éxito o error sin usar finally, aún no soportado por el compilador.
+    setAppointmentToCancel(null);
   }
 
   const queryError =
@@ -243,7 +248,7 @@ export default function CustomerAppointmentsPage() {
                   {canCancel ? (
                     <BorderButton
                       type="button"
-                      onClick={() => void handleCancel(appointment.id)}
+                      onClick={() => setAppointmentToCancel(appointment.id)}
                       disabled={cancellingId === appointment.id}
                     >
                       {cancellingId === appointment.id
@@ -257,6 +262,16 @@ export default function CustomerAppointmentsPage() {
           })}
         </section>
       ) : null}
+      {/* Confirma una cancelación antes de ejecutar una acción irreversible. */}
+      <AlertDialog
+        open={Boolean(appointmentToCancel)}
+        title="Cancelar cita"
+        description="La cita dejará de estar disponible. Esta acción no se puede deshacer desde esta pantalla."
+        confirmLabel="Cancelar cita"
+        pending={cancelMutation.isPending}
+        onCancel={() => setAppointmentToCancel(null)}
+        onConfirm={() => void confirmCancellation()}
+      />
     </main>
   );
 }

@@ -7,6 +7,8 @@ import Loading from '../../components/Loading'
 import EmptyState from '../../components/EmptyState'
 import { FilledButton } from '../../components/Buttons'
 import { ThemedPanel } from '../../components/Panel'
+import { AlertDialog } from '../../components/ui/alert-dialog'
+import { Select } from '../../components/ui/select'
 import { createSchedule, deleteSchedule, getSchedules, updateSchedule, type ScheduleDto, type SchedulePayload } from '../../services/api'
 import { queryKeys } from '../../services/queryKeys'
 import AdminSectionHeader from './components/AdminSectionHeader'
@@ -26,6 +28,7 @@ function toInputTime(value?: string | null) {
 }
 
 export default function SchedulesPage() {
+  // Los horarios generales son la base con la que luego se calculan slots reservables.
   const { role } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -35,6 +38,7 @@ export default function SchedulesPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [scheduleToDelete, setScheduleToDelete] = useState<ScheduleDto | null>(null)
 
   useEffect(() => {
     if (!isAdmin) {
@@ -98,17 +102,19 @@ export default function SchedulesPage() {
     }
   }
 
-  async function removeSchedule(schedule: ScheduleDto) {
-    if (!window.confirm(`¿Eliminar el horario de ${dayLabels[schedule.dayOfWeek]} ${toInputTime(schedule.startTime)}-${toInputTime(schedule.endTime)}?`)) return
-
+  async function confirmScheduleRemoval() {
+    if (!scheduleToDelete) return
     setError('')
     try {
-      await deleteMutation.mutateAsync(schedule.id)
+      await deleteMutation.mutateAsync(scheduleToDelete.id)
       setFeedback('Horario eliminado correctamente.')
       await queryClient.invalidateQueries({ queryKey: queryKeys.adminSchedules })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo eliminar el horario')
     }
+
+    // El diálogo se cierra tras éxito o error sin usar finally, aún no soportado por el compilador.
+    setScheduleToDelete(null)
   }
 
   return (
@@ -148,7 +154,7 @@ export default function SchedulesPage() {
                   <button type="button" onClick={() => openEdit(schedule)} className="admin-icon-button" aria-label={`Editar ${dayLabels[schedule.dayOfWeek]}`}>
                     <Pencil size={16} />
                   </button>
-                  <button type="button" onClick={() => void removeSchedule(schedule)} disabled={saving} className="admin-icon-button admin-icon-button--danger" aria-label={`Eliminar ${dayLabels[schedule.dayOfWeek]}`}>
+                  <button type="button" onClick={() => setScheduleToDelete(schedule)} disabled={saving} className="admin-icon-button admin-icon-button--danger" aria-label={`Eliminar ${dayLabels[schedule.dayOfWeek]}`}>
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -165,11 +171,11 @@ export default function SchedulesPage() {
 
             <label className="admin-field">
               Día
-              <select value={form.dayOfWeek} onChange={(event) => setForm({ ...form, dayOfWeek: Number(event.target.value) })}>
+              <Select value={form.dayOfWeek} onChange={(event) => setForm({ ...form, dayOfWeek: Number(event.target.value) })}>
                 {dayLabels.map((label, index) => (
                   <option key={label} value={index}>{label}</option>
                 ))}
-              </select>
+              </Select>
             </label>
 
             <div className="admin-modal__grid">
@@ -195,6 +201,16 @@ export default function SchedulesPage() {
           </form>
         </div>
       ) : null}
+      {/* Confirma el borrado con el horario seleccionado como contexto. */}
+      <AlertDialog
+        open={Boolean(scheduleToDelete)}
+        title="Eliminar horario"
+        description={scheduleToDelete ? `Se eliminará ${dayLabels[scheduleToDelete.dayOfWeek]} de ${toInputTime(scheduleToDelete.startTime)} a ${toInputTime(scheduleToDelete.endTime)}.` : ''}
+        confirmLabel="Eliminar horario"
+        pending={deleteMutation.isPending}
+        onCancel={() => setScheduleToDelete(null)}
+        onConfirm={() => void confirmScheduleRemoval()}
+      />
     </section>
   )
 }
