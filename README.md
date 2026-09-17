@@ -23,6 +23,10 @@ La configuración en `components.json`, los alias `@/` y el CLI de shadcn permit
 
 La primera entrega del catálogo simplifica la cabecera y da prioridad a buscar, comparar y reservar. Permite buscar por nombre y ordenar por precio o duración. Las imágenes usan proporción 4:3, carga diferida fuera de las primeras tarjetas y una alternativa cuando no hay imagen o la URL falla. No hay filtro por categoría porque la API no expone ese dato.
 
+## Entorno
+
+Node.js 22.23.2 LTS es la versión validada para este proyecto. Cumple el mínimo de `react-router` (`>=22.22.0`).
+
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
