@@ -19,6 +19,10 @@ El inicio de sesión y el registro son los primeros flujos migrados. Las pantall
 
 La configuración en `components.json`, los alias `@/` y el CLI de shadcn permiten añadir componentes de forma controlada. Ya se incorporaron Select, Badge, Skeleton, Sheet y AlertDialog; Sheet y Skeleton quedan disponibles para la primera pantalla que los necesite. La revisión completa de escritorio, teclado y contraste sigue pendiente.
 
+## Catálogo
+
+La primera entrega del catálogo simplifica la cabecera y da prioridad a buscar, comparar y reservar. Permite buscar por nombre y ordenar por precio o duración. Las imágenes usan proporción 4:3, carga diferida fuera de las primeras tarjetas y una alternativa cuando no hay imagen o la URL falla. No hay filtro por categoría porque la API no expone ese dato.
+
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
