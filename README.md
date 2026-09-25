@@ -25,6 +25,10 @@ La primera entrega del catálogo simplifica la cabecera y da prioridad a buscar,
 
 El carrito permite reservar un paquete de servicios. El backend calcula su duración total al ofrecer horarios y confirmar la orden; no es necesario reducir el carrito a un único servicio.
 
+## Checkout
+
+El checkout muestra el avance por servicios, vehículo, horario, pago y confirmación. El resumen se mantiene visible durante el recorrido. Al recargar, se recuperan vehículo, fecha y horario durante 24 horas, siempre que el carrito siga siendo el mismo. El horario recuperado se vuelve a consultar antes de permitir continuar. No se guardan datos de tarjeta, secretos ni una orden ya creada.
+
 ## Entorno
 
 Node.js 22.23.2 LTS es la versión validada para este proyecto. Cumple el mínimo de `react-router` (`>=22.22.0`).

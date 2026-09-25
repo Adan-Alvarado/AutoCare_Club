@@ -1,10 +1,14 @@
 import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react'
 import { ChevronLeft, X } from 'lucide-react'
+import type { CheckoutStep } from '../cart.types'
+import BookingStepper from './BookingStepper'
 
 interface CartModalProps {
   title: string
+  activeStep: CheckoutStep
   showBack: boolean
   error: string
+  notice: string
   summary: ReactNode
   children: ReactNode
   onBack: () => void
@@ -13,8 +17,10 @@ interface CartModalProps {
 
 export default function CartModal({
   title,
+  activeStep,
   showBack,
   error,
+  notice,
   summary,
   children,
   onBack,
@@ -58,6 +64,9 @@ export default function CartModal({
           </button>
         </header>
 
+        {/* El progreso queda fuera del área desplazable para orientar durante todo el checkout. */}
+        <BookingStepper activeStep={activeStep} />
+
         <div className="cart-dialog__body">
           <section className="cart-dialog__content">
             {showBack ? (
@@ -76,6 +85,8 @@ export default function CartModal({
                 {error}
               </p>
             ) : null}
+
+            {notice ? <p className="cart-alert" role="status">{notice}</p> : null}
 
             {children}
           </section>

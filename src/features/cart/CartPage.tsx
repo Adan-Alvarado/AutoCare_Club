@@ -19,6 +19,7 @@ import {
 import { queryKeys } from '../../services/queryKeys'
 import { stepTitles, type CheckoutStep, type PaymentMethod } from './cart.types'
 import { localDate } from './cart.utils'
+import { clearBookingDraft, createCartSignature, loadBookingDraft, saveBookingDraft } from './bookingDraft'
 import CartItemsStep from './components/CartItemsStep'
 import CartModal from './components/CartModal'
 import ConfirmationStep from './components/ConfirmationStep'
@@ -59,6 +60,9 @@ export default function CartPage() {
   const [pendingOrder, setPendingOrder] = useState<OrderDto | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('workshop')
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntentDto | null>(null)
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false)
+  const [restoredSlotNeedsValidation, setRestoredSlotNeedsValidation] = useState(false)
+  const [draftNotice, setDraftNotice] = useState('')
 
   // Datos remotos se mantienen en React Query; las selecciones temporales viven aquí.
   const cartQuery = useQuery({ queryKey: queryKeys.cart, queryFn: getCart })
@@ -69,12 +73,16 @@ export default function CartPage() {
     enabled: activeStep !== 'cart',
   })
   const cart = cartQuery.data ?? null
+  const cartSignature = useMemo(
+    () => createCartSignature(cart?.items ?? []),
+    [cart?.items],
+  )
   // La API usa un servicio del paquete para identificar la consulta; calcula la duración con todo el carrito activo.
   const availabilityServiceId = cart?.items[0]?.serviceId ?? ''
   const schedulesQuery = useQuery({
     queryKey: queryKeys.schedules(availabilityServiceId, selectedDate),
     queryFn: () => getAvailableSchedules(availabilityServiceId, selectedDate),
-    enabled: activeStep === 'schedule' && Boolean(availabilityServiceId && selectedDate),
+    enabled: (activeStep === 'schedule' || restoredSlotNeedsValidation) && Boolean(availabilityServiceId && selectedDate),
   })
 
   const updateItemMutation = useMutation({
@@ -123,6 +131,58 @@ export default function CartPage() {
     .find((value) => value instanceof Error)
 
   useEffect(() => {
+    // Restaura únicamente datos no sensibles y solo si el carrito actual sigue siendo el mismo.
+    if (cartQuery.isLoading || hasRestoredDraft || !cart?.items.length || !cartSignature) return
+
+    const draft = loadBookingDraft(cartSignature)
+    const restoreDraft = window.setTimeout(() => {
+      if (draft) {
+        setSelectedVehicleId(draft.vehicleId)
+        setSelectedDate(draft.date)
+        setSelectedSlot(draft.slot)
+        setRestoredSlotNeedsValidation(Boolean(draft.slot))
+        setDraftNotice('Recuperamos tu selección. Confirma el horario antes de continuar.')
+      }
+      setHasRestoredDraft(true)
+    }, 0)
+
+    return () => window.clearTimeout(restoreDraft)
+  }, [cart?.items.length, cartQuery.isLoading, cartSignature, hasRestoredDraft])
+
+  useEffect(() => {
+    // Un horario guardado puede haberse ocupado mientras la persona estuvo fuera.
+    if (!restoredSlotNeedsValidation || schedulesQuery.isLoading || schedulesQuery.isFetching) return
+
+    const restoredSlotIsAvailable = schedulesQuery.data?.some((slot) => (
+      slot.startTime === selectedSlot?.startTime && slot.endTime === selectedSlot?.endTime
+    ))
+
+    const validateRestoredSlot = window.setTimeout(() => {
+      if (!restoredSlotIsAvailable) {
+        setSelectedSlot(null)
+        setDraftNotice('El horario guardado ya no está disponible. Elige otro para continuar.')
+      }
+      setRestoredSlotNeedsValidation(false)
+    }, 0)
+
+    return () => window.clearTimeout(validateRestoredSlot)
+  }, [restoredSlotNeedsValidation, schedulesQuery.data, schedulesQuery.isFetching, schedulesQuery.isLoading, selectedSlot])
+
+  useEffect(() => {
+    // Conserva el avance hasta 24 horas y evita persistir datos de tarjeta o una orden ya creada.
+    if (!hasRestoredDraft || !cart?.items.length || !cartSignature || completedOrder) return
+
+    const draftStep = activeStep === 'confirmation' ? 'payment' : activeStep
+    saveBookingDraft({
+      cartSignature,
+      vehicleId: selectedVehicleId,
+      date: selectedDate,
+      slot: selectedSlot,
+      step: draftStep,
+    })
+  }, [activeStep, cart?.items.length, cartSignature, completedOrder, hasRestoredDraft, selectedDate, selectedSlot, selectedVehicleId])
+
+  useEffect(() => {
     // Impide entrar por URL a un paso para el que aún faltan decisiones anteriores.
     if (!step || loading) return
 
@@ -132,16 +192,17 @@ export default function CartPage() {
 
     if (activeStep !== 'cart' && !hasValidCart) {
       requiredStep = 'cart'
-    } else if (['schedule', 'payment', 'confirmation'].includes(activeStep) && !selectedVehicleId) {
+    } else if (['schedule', 'payment', 'confirmation'].includes(activeStep)
+      && (!selectedVehicleId || (vehiclesQuery.isSuccess && !selectedVehicle))) {
       requiredStep = 'vehicle'
-    } else if (['payment', 'confirmation'].includes(activeStep) && !selectedSlot) {
+    } else if (['payment', 'confirmation'].includes(activeStep) && (!selectedSlot || restoredSlotNeedsValidation)) {
       requiredStep = 'schedule'
     } else if (activeStep === 'confirmation' && !completedOrder) {
       requiredStep = 'payment'
     }
 
     if (requiredStep) navigate(cartPath(requiredStep), { replace: true })
-  }, [activeStep, cart, completedOrder, loading, navigate, selectedSlot, selectedVehicleId, step])
+  }, [activeStep, cart, completedOrder, loading, navigate, restoredSlotNeedsValidation, selectedSlot, selectedVehicle, selectedVehicleId, step, vehiclesQuery.isSuccess])
 
   const totalMinutes = useMemo(() => {
     const currentCart = cartQuery.data
@@ -163,6 +224,8 @@ export default function CartPage() {
     setError('')
     try {
       await updateItemMutation.mutateAsync({ itemId, quantity })
+      setSelectedSlot(null)
+      setRestoredSlotNeedsValidation(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo actualizar el carrito')
     }
@@ -172,6 +235,8 @@ export default function CartPage() {
     setError('')
     try {
       await removeItemMutation.mutateAsync(itemId)
+      setSelectedSlot(null)
+      setRestoredSlotNeedsValidation(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo eliminar el servicio')
     }
@@ -182,6 +247,7 @@ export default function CartPage() {
     setError('')
     try {
       await clearCartMutation.mutateAsync(cart)
+      clearBookingDraft()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo vaciar el carrito')
     }
@@ -193,17 +259,18 @@ export default function CartPage() {
       setError('Agrega al menos un servicio para continuar con la reserva.')
       return
     }
-    navigate(cartPath('vehicle'))
+    // Si había un vehículo recuperado, el siguiente paso permite revisar y conservar su selección.
+    navigate(cartPath(selectedVehicleId ? 'schedule' : 'vehicle'))
   }
 
   function continueToSchedule() {
-    setSelectedSlot(null)
     navigate(cartPath('schedule'))
   }
 
   function changeDate(date: string) {
     setSelectedDate(date)
     setSelectedSlot(null)
+    setRestoredSlotNeedsValidation(false)
     setError('')
   }
 
@@ -219,6 +286,7 @@ export default function CartPage() {
     })
     setPendingOrder(order)
     queryClient.setQueryData(queryKeys.cart, null)
+    clearBookingDraft()
     return order
   }
 
@@ -273,8 +341,10 @@ export default function CartPage() {
   return (
     <CartModal
       title={stepTitles[activeStep]}
+      activeStep={activeStep}
       showBack={activeStep !== 'cart' && activeStep !== 'confirmation' && !pendingOrder}
       error={error || (queryError instanceof Error ? queryError.message : '')}
+      notice={draftNotice}
       onBack={goBack}
       onClose={() => navigate('/services')}
       summary={(

@@ -83,6 +83,64 @@
   overflow-y: auto;
 }
 
+/* El stepper muestra contexto continuo y se desplaza horizontalmente en pantallas estrechas. */
+.booking-stepper {
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ac-ink-700);
+  background: var(--ac-ink-850);
+  scrollbar-width: thin;
+}
+
+.booking-stepper__list {
+  display: flex;
+  min-width: max-content;
+  align-items: center;
+  gap: var(--ac-space-sm);
+  padding: var(--ac-space-sm) clamp(1.25rem, 3vw, 2.25rem);
+}
+
+.booking-stepper__item {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-xs);
+  color: var(--ac-smoke);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.booking-stepper__item:not(:last-child)::after {
+  width: clamp(1rem, 3vw, 2.5rem);
+  height: 1px;
+  margin-left: var(--ac-space-xs);
+  background: var(--ac-ink-700);
+  content: '';
+}
+
+.booking-stepper__indicator {
+  display: inline-grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.7rem;
+}
+
+.booking-stepper__item[data-status="complete"] {
+  color: var(--ac-oxide);
+}
+
+.booking-stepper__item[data-status="current"] {
+  color: var(--ac-porcelain);
+}
+
+.booking-stepper__item[data-status="current"] .booking-stepper__indicator {
+  border-color: var(--ac-brass);
+  background: var(--ac-brass);
+  color: var(--ac-brass-ink);
+}
+
 .cart-dialog__content {
   min-width: 0;
   padding: clamp(1.25rem, 3vw, 2.25rem);
@@ -108,6 +166,12 @@
   color: var(--ac-porcelain);
   padding: var(--ac-space-sm) var(--ac-space-md);
   font-size: 0.875rem;
+}
+
+/* Los avisos informativos usan el mismo contenedor sin aparentar un error del formulario. */
+.cart-alert:not([role="alert"]) {
+  border-color: color-mix(in oklch, var(--ac-oxide), transparent 55%);
+  background: color-mix(in oklch, var(--ac-oxide), var(--ac-ink-900) 88%);
 }
 
 .cart-stack {
