@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import Loading from '../../components/Loading'
 import {
   checkoutCart,
   createAppointment,
-  createCheckoutSession,
   createPaymentIntent,
   deleteCartItem,
   getAvailableSchedules,
@@ -13,7 +12,6 @@ import {
   getServices,
   getVehicles,
   updateCartItem,
-  verifyCheckoutSession,
   type OrderDto,
   type PaymentIntentDto,
   type ScheduleAvailabilityDto,
@@ -44,8 +42,8 @@ function cartPath(step: CheckoutStep) {
 }
 
 export default function CartPage() {
+  // Coordina el wizard: cada componente hijo muestra un paso y devuelve una acción concreta.
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { '*': stepPath = '' } = useParams()
   const queryClient = useQueryClient()
   const routedStep = stepPath || 'cart'
@@ -61,8 +59,8 @@ export default function CartPage() {
   const [pendingOrder, setPendingOrder] = useState<OrderDto | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('workshop')
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntentDto | null>(null)
-  const returnedFromStripe = Boolean(searchParams.get('session_id') || searchParams.get('order_id'))
 
+  // Datos remotos se mantienen en React Query; las selecciones temporales viven aquí.
   const cartQuery = useQuery({ queryKey: queryKeys.cart, queryFn: getCart })
   const servicesQuery = useQuery({ queryKey: queryKeys.services, queryFn: getServices })
   const vehiclesQuery = useQuery({
@@ -71,11 +69,12 @@ export default function CartPage() {
     enabled: activeStep !== 'cart',
   })
   const cart = cartQuery.data ?? null
-  const serviceId = cart?.items[0]?.serviceId ?? ''
+  // La API usa un servicio del paquete para identificar la consulta; calcula la duración con todo el carrito activo.
+  const availabilityServiceId = cart?.items[0]?.serviceId ?? ''
   const schedulesQuery = useQuery({
-    queryKey: queryKeys.schedules(serviceId, selectedDate),
-    queryFn: () => getAvailableSchedules(serviceId, selectedDate),
-    enabled: activeStep === 'schedule' && Boolean(serviceId && selectedDate),
+    queryKey: queryKeys.schedules(availabilityServiceId, selectedDate),
+    queryFn: () => getAvailableSchedules(availabilityServiceId, selectedDate),
+    enabled: activeStep === 'schedule' && Boolean(availabilityServiceId && selectedDate),
   })
 
   const updateItemMutation = useMutation({
@@ -100,18 +99,15 @@ export default function CartPage() {
     mutationFn: async ({ cart: currentCart, vehicleId, slot, date }: ReservationData) => {
       const appointment = await createAppointment({
         vehicleId,
-        serviceId: currentCart.items[0].serviceId,
-        appointmentDate: date,
-        startTime: slot.startTime,
-        notes: currentCart.items.length > 1
-          ? `Orden con ${currentCart.items.length} servicios. Horario calculated a partir del servicio principal.`
-          : undefined,
+      // El contrato actual mantiene un servicio principal; checkout valida y reserva la duración total del paquete.
+      serviceId: currentCart.items[0].serviceId,
+      appointmentDate: date,
+      startTime: slot.startTime,
       })
       return checkoutCart(vehicleId, appointment.id)
     },
   })
   const paymentIntentMutation = useMutation({ mutationFn: (orderId: string) => createPaymentIntent(orderId) })
-  const checkoutSessionMutation = useMutation({ mutationFn: (orderId: string) => createCheckoutSession(orderId) })
 
   const vehicles = (vehiclesQuery.data ?? []).filter((vehicle) => vehicle.isActive)
   const slots = schedulesQuery.data ?? []
@@ -122,35 +118,16 @@ export default function CartPage() {
     || clearCartMutation.isPending
     || reservationMutation.isPending
     || paymentIntentMutation.isPending
-    || checkoutSessionMutation.isPending
   const loading = cartQuery.isLoading || servicesQuery.isLoading || (activeStep === 'vehicle' && vehiclesQuery.isLoading)
   const queryError = [cartQuery.error, servicesQuery.error, vehiclesQuery.error, schedulesQuery.error]
     .find((value) => value instanceof Error)
 
   useEffect(() => {
-    const sessionId = searchParams.get('session_id')
-    if (sessionId) {
-      verifyCheckoutSession(sessionId)
-        .then(() => {
-          queryClient.setQueryData(queryKeys.cart, null)
-        })
-        .catch((err) => {
-          console.error('Error al verificar la sesion de Stripe:', err)
-        })
-    }
-  }, [searchParams, queryClient])
-
-  useEffect(() => {
+    // Impide entrar por URL a un paso para el que aún faltan decisiones anteriores.
     if (!step || loading) return
 
-    if (returnedFromStripe) {
-      if (activeStep !== 'confirmation') {
-        navigate(cartPath('confirmation'), { replace: true })
-      }
-      return
-    }
-
-    const hasValidCart = Boolean(cart && cart.items.length === 1 && cart.items[0].quantity >= 1)
+    // Un paquete es válido si contiene al menos un servicio; la API valida cantidades y duración total.
+    const hasValidCart = Boolean(cart && cart.items.some((item) => item.quantity >= 1))
     let requiredStep: CheckoutStep | null = null
 
     if (activeStep !== 'cart' && !hasValidCart) {
@@ -164,7 +141,7 @@ export default function CartPage() {
     }
 
     if (requiredStep) navigate(cartPath(requiredStep), { replace: true })
-  }, [activeStep, cart, completedOrder, loading, navigate, returnedFromStripe, selectedSlot, selectedVehicleId, step])
+  }, [activeStep, cart, completedOrder, loading, navigate, selectedSlot, selectedVehicleId, step])
 
   const totalMinutes = useMemo(() => {
     const currentCart = cartQuery.data
@@ -212,8 +189,8 @@ export default function CartPage() {
 
   function continueFromCart() {
     setError('')
-    if (!cart || cart.items.length !== 1 || cart.items[0].quantity < 1) {
-      setError('Para continuar, deja un solo servicio en el carrito y ajusta su cantidad si lo necesitas.')
+    if (!cart || !cart.items.some((item) => item.quantity >= 1)) {
+      setError('Agrega al menos un servicio para continuar con la reserva.')
       return
     }
     navigate(cartPath('vehicle'))
@@ -231,6 +208,7 @@ export default function CartPage() {
   }
 
   async function prepareOrder() {
+    // La orden se crea una sola vez antes de abrir Stripe para evitar duplicados al reintentar.
     if (pendingOrder) return pendingOrder
     if (!cart || !selectedVehicleId || !selectedSlot) return null
     const order = await reservationMutation.mutateAsync({
@@ -245,6 +223,7 @@ export default function CartPage() {
   }
 
   async function confirmReservation() {
+    // Pago en taller termina la reserva; tarjeta prepara el intent y espera confirmación de Stripe.
     setError('')
     try {
       const order = await prepareOrder()
@@ -252,11 +231,9 @@ export default function CartPage() {
 
       if (paymentMethod === 'card') {
         try {
-          const session = await checkoutSessionMutation.mutateAsync(order.id)
-          if (session.url) {
-            window.location.href = session.url
-            return
-          }
+          const intent = await paymentIntentMutation.mutateAsync(order.id)
+          setPaymentIntent(intent)
+          return
         } catch (e) {
           setPaymentIntent(null)
           setPaymentMethod('workshop')

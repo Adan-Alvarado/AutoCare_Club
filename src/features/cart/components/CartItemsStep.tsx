@@ -24,6 +24,7 @@ export default function CartItemsStep({
   onClear,
   onContinue,
 }: CartItemsStepProps) {
+  // El carrito representa un paquete: todos sus servicios comparten vehículo, horario y una sola reserva.
   if (!cart || cart.items.length === 0) {
     return (
       <div className="cart-empty">
@@ -34,8 +35,6 @@ export default function CartItemsStep({
       </div>
     )
   }
-
-  const requiresAdjustment = cart.items.length !== 1
 
   return (
     <div>
@@ -88,14 +87,9 @@ export default function CartItemsStep({
           </article>
         ))}
       </div>
-      {requiresAdjustment ? (
-        <p className="cart-warning" role="status">
-          Para reservar, deja un solo servicio en el carrito. Puedes ajustar la cantidad o eliminar los servicios adicionales.
-        </p>
-      ) : null}
       <div className="cart-actions cart-actions--split">
         <BorderButton className="cart-action cart-action--secondary" onClick={onClear} disabled={saving}>Vaciar carrito</BorderButton>
-        <FilledButton className="cart-action cart-action--primary" onClick={onContinue} disabled={saving || requiresAdjustment}>Continuar</FilledButton>
+        <FilledButton className="cart-action cart-action--primary" onClick={onContinue} disabled={saving}>Continuar</FilledButton>
       </div>
     </div>
   )
