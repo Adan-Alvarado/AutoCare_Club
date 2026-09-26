@@ -10,6 +10,7 @@ export interface BookingDraft {
   vehicleId: string
   date: string
   slot: ScheduleAvailabilityDto | null
+  reservationKey: string
   step: Exclude<CheckoutStep, 'confirmation'>
   expiresAt: number
 }
@@ -31,6 +32,7 @@ export function loadBookingDraft(cartSignature: string): BookingDraft | null {
     const isValid = draft
       && typeof draft.vehicleId === 'string'
       && typeof draft.date === 'string'
+      && typeof draft.reservationKey === 'string'
       && typeof draft.expiresAt === 'number'
       && typeof draft.cartSignature === 'string'
       && validSteps.includes(draft.step)

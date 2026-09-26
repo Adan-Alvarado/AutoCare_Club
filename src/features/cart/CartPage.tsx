@@ -3,14 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Navigate, useNavigate, useParams } from 'react-router'
 import Loading from '../../components/Loading'
 import {
-  checkoutCart,
-  createAppointment,
   createPaymentIntent,
   deleteCartItem,
   getAvailableSchedules,
   getCart,
   getServices,
   getVehicles,
+  reserveCart,
   updateCartItem,
   type OrderDto,
   type PaymentIntentDto,
@@ -30,10 +29,11 @@ import VehicleStep from './components/VehicleStep'
 import './cart.css'
 
 interface ReservationData {
-  cart: OrderDto
   vehicleId: string
+  serviceId: string
   slot: ScheduleAvailabilityDto
   date: string
+  reservationKey: string
 }
 
 const checkoutSteps: CheckoutStep[] = ['cart', 'vehicle', 'schedule', 'payment', 'confirmation']
@@ -60,6 +60,7 @@ export default function CartPage() {
   const [pendingOrder, setPendingOrder] = useState<OrderDto | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('workshop')
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntentDto | null>(null)
+  const [reservationKey, setReservationKey] = useState('')
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false)
   const [restoredSlotNeedsValidation, setRestoredSlotNeedsValidation] = useState(false)
   const [draftNotice, setDraftNotice] = useState('')
@@ -104,16 +105,14 @@ export default function CartPage() {
     onSuccess: () => queryClient.setQueryData(queryKeys.cart, null),
   })
   const reservationMutation = useMutation({
-    mutationFn: async ({ cart: currentCart, vehicleId, slot, date }: ReservationData) => {
-      const appointment = await createAppointment({
+    mutationFn: ({ vehicleId, serviceId, slot, date, reservationKey }: ReservationData) => (
+      reserveCart({
         vehicleId,
-      // El contrato actual mantiene un servicio principal; checkout valida y reserva la duración total del paquete.
-      serviceId: currentCart.items[0].serviceId,
-      appointmentDate: date,
-      startTime: slot.startTime,
-      })
-      return checkoutCart(vehicleId, appointment.id)
-    },
+        serviceId,
+        appointmentDate: date,
+        startTime: slot.startTime,
+      }, reservationKey)
+    ),
   })
   const paymentIntentMutation = useMutation({ mutationFn: (orderId: string) => createPaymentIntent(orderId) })
 
@@ -140,6 +139,7 @@ export default function CartPage() {
         setSelectedVehicleId(draft.vehicleId)
         setSelectedDate(draft.date)
         setSelectedSlot(draft.slot)
+        setReservationKey(draft.reservationKey)
         setRestoredSlotNeedsValidation(Boolean(draft.slot))
         setDraftNotice('Recuperamos tu selección. Confirma el horario antes de continuar.')
       }
@@ -178,9 +178,10 @@ export default function CartPage() {
       vehicleId: selectedVehicleId,
       date: selectedDate,
       slot: selectedSlot,
+      reservationKey,
       step: draftStep,
     })
-  }, [activeStep, cart?.items.length, cartSignature, completedOrder, hasRestoredDraft, selectedDate, selectedSlot, selectedVehicleId])
+  }, [activeStep, cart?.items.length, cartSignature, completedOrder, hasRestoredDraft, reservationKey, selectedDate, selectedSlot, selectedVehicleId])
 
   useEffect(() => {
     // Impide entrar por URL a un paso para el que aún faltan decisiones anteriores.
@@ -226,6 +227,7 @@ export default function CartPage() {
       await updateItemMutation.mutateAsync({ itemId, quantity })
       setSelectedSlot(null)
       setRestoredSlotNeedsValidation(false)
+      setReservationKey('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo actualizar el carrito')
     }
@@ -237,6 +239,7 @@ export default function CartPage() {
       await removeItemMutation.mutateAsync(itemId)
       setSelectedSlot(null)
       setRestoredSlotNeedsValidation(false)
+      setReservationKey('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo eliminar el servicio')
     }
@@ -271,18 +274,33 @@ export default function CartPage() {
     setSelectedDate(date)
     setSelectedSlot(null)
     setRestoredSlotNeedsValidation(false)
+    setReservationKey('')
     setError('')
   }
 
+  function selectVehicle(vehicleId: string) {
+    if (vehicleId !== selectedVehicleId) setReservationKey('')
+    setSelectedVehicleId(vehicleId)
+  }
+
+  function selectSlot(slot: ScheduleAvailabilityDto) {
+    if (slot.startTime !== selectedSlot?.startTime) setReservationKey('')
+    setRestoredSlotNeedsValidation(false)
+    setSelectedSlot(slot)
+  }
+
   async function prepareOrder() {
-    // La orden se crea una sola vez antes de abrir Stripe para evitar duplicados al reintentar.
+    // La API crea cita y orden juntas; la misma clave hace seguro repetir una solicitud incompleta.
     if (pendingOrder) return pendingOrder
     if (!cart || !selectedVehicleId || !selectedSlot) return null
+    const nextReservationKey = reservationKey || window.crypto.randomUUID()
+    setReservationKey(nextReservationKey)
     const order = await reservationMutation.mutateAsync({
-      cart,
       vehicleId: selectedVehicleId,
+      serviceId: cart.items[0].serviceId,
       slot: selectedSlot,
       date: selectedDate,
+      reservationKey: nextReservationKey,
     })
     setPendingOrder(order)
     queryClient.setQueryData(queryKeys.cart, null)
@@ -377,7 +395,7 @@ export default function CartPage() {
         <VehicleStep
           vehicles={vehicles}
           selectedVehicleId={selectedVehicleId}
-          onSelect={setSelectedVehicleId}
+          onSelect={selectVehicle}
           onContinue={continueToSchedule}
           onAddVehicle={() => navigate('/vehicles')}
         />
@@ -391,7 +409,7 @@ export default function CartPage() {
           selectedSlot={selectedSlot}
           loading={schedulesQuery.isLoading || schedulesQuery.isFetching}
           onDateChange={changeDate}
-          onSelectSlot={setSelectedSlot}
+          onSelectSlot={selectSlot}
           onContinue={() => navigate(cartPath('payment'))}
         />
       ) : null}

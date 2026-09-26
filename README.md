@@ -27,7 +27,7 @@ El carrito permite reservar un paquete de servicios. El backend calcula su durac
 
 ## Checkout
 
-El checkout muestra el avance por servicios, vehículo, horario, pago y confirmación. El resumen se mantiene visible durante el recorrido. Al recargar, se recuperan vehículo, fecha y horario durante 24 horas, siempre que el carrito siga siendo el mismo. El horario recuperado se vuelve a consultar antes de permitir continuar. No se guardan datos de tarjeta, secretos ni una orden ya creada.
+El checkout muestra el avance por servicios, vehículo, horario, pago y confirmación. El resumen se mantiene visible durante el recorrido. Al recargar, se recuperan vehículo, fecha y horario durante 24 horas, siempre que el carrito siga siendo el mismo. El horario recuperado se vuelve a consultar antes de permitir continuar. La reserva usa una única operación con clave de idempotencia: si se pierde una respuesta y se reintenta, la API devuelve la misma orden en vez de crear otra. No se guardan datos de tarjeta ni secretos.
 
 ## Entorno
 

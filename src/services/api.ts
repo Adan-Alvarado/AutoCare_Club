@@ -85,6 +85,13 @@ export interface AppointmentCreateData {
   notes?: string
 }
 
+export interface CartReservationData {
+  vehicleId: string
+  serviceId: string
+  appointmentDate: string
+  startTime: string
+}
+
 export interface AppointmentActionResponseDto {
   id: string
 }
@@ -381,6 +388,24 @@ export async function checkoutCart(
 
   if (!result.status || !result.data) {
     throw new Error(result.message || 'No se pudo confirmar la orden')
+  }
+
+  return result.data
+}
+
+// La misma clave permite recuperar una reserva si el navegador pierde la respuesta del servidor.
+export async function reserveCart(
+  data: CartReservationData,
+  reservationKey: string,
+): Promise<OrderDto> {
+  const result = await httpRequest<OrderDto>('/api/cart/reserve', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': reservationKey },
+    body: JSON.stringify(data),
+  })
+
+  if (!result.status || !result.data) {
+    throw new Error(result.message || 'No se pudo confirmar la reserva')
   }
 
   return result.data
