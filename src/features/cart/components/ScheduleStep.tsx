@@ -1,4 +1,4 @@
-import { Clock3 } from 'lucide-react'
+import { CalendarX2, Check, Circle, Clock3 } from 'lucide-react'
 import { FilledButton } from '../../../components/Buttons'
 import Loading from '../../../components/Loading'
 import type { ScheduleAvailabilityDto } from '../../../services/api'
@@ -10,9 +10,11 @@ interface ScheduleStepProps {
   slots: ScheduleAvailabilityDto[]
   selectedSlot: ScheduleAvailabilityDto | null
   loading: boolean
+  hasError: boolean
   onDateChange: (date: string) => void
   onSelectSlot: (slot: ScheduleAvailabilityDto) => void
   onContinue: () => void
+  onRetry: () => void
 }
 
 export default function ScheduleStep({
@@ -21,12 +23,15 @@ export default function ScheduleStep({
   slots,
   selectedSlot,
   loading,
+  hasError,
   onDateChange,
   onSelectSlot,
   onContinue,
+  onRetry,
 }: ScheduleStepProps) {
   return (
     <div>
+      {/* La fecha actualiza las franjas; solo la API decide cuáles se pueden reservar. */}
       <label className="cart-field max-w-xs">
         Fecha de la reserva
         <input
@@ -40,8 +45,24 @@ export default function ScheduleStep({
       <h2 className="cart-step-heading">
         <Clock3 size={19} /> Horarios disponibles
       </h2>
-      {loading ? <Loading /> : slots.length === 0 ? (
-        <p className="cart-warning">No hay horarios disponibles para esta fecha. Prueba con otro día.</p>
+      <p className="cart-step-copy">Elige una hora marcada como disponible para continuar.</p>
+      {loading ? <Loading /> : hasError ? (
+        <div className="cart-availability-empty" role="status">
+          <CalendarX2 size={25} aria-hidden="true" />
+          <div>
+            <h3>No pudimos consultar los horarios</h3>
+            <p>Revisa tu conexión e inténtalo nuevamente.</p>
+          </div>
+          <FilledButton className="cart-action cart-action--secondary" onClick={onRetry}>Reintentar</FilledButton>
+        </div>
+      ) : slots.length === 0 ? (
+        <div className="cart-availability-empty" role="status">
+          <CalendarX2 size={25} aria-hidden="true" />
+          <div>
+            <h3>Sin horarios disponibles</h3>
+            <p>Prueba con otra fecha para ver nuevas opciones.</p>
+          </div>
+        </div>
       ) : (
         <div className="cart-slots">
           {slots.map((slot) => {
@@ -50,12 +71,17 @@ export default function ScheduleStep({
               <button
                 type="button"
                 key={`${slot.date}-${slot.startTime}`}
-                onClick={() => onSelectSlot(slot)}
-                className="cart-slot"
-                aria-pressed={selected}
-              >
-                {formatTime(slot.startTime)}
-              </button>
+              onClick={() => onSelectSlot(slot)}
+              className="cart-slot"
+              aria-pressed={selected}
+              data-selected={selected}
+            >
+              <span className="cart-slot__time">{formatTime(slot.startTime)}</span>
+              <span className="cart-slot__state">
+                {selected ? <Check size={14} aria-hidden="true" /> : <Circle size={13} aria-hidden="true" />}
+                {selected ? 'Seleccionado' : 'Disponible'}
+              </span>
+            </button>
             )
           })}
         </div>

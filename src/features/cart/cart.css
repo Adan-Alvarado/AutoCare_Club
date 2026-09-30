@@ -330,6 +330,28 @@
   gap: var(--ac-space-sm);
 }
 
+/* Presenta la decisión antes de las opciones y deja claro qué representa cada estado. */
+.cart-step-intro {
+  margin-bottom: var(--ac-space-lg);
+}
+
+.cart-step-intro h2,
+.cart-availability-empty h3 {
+  font-family: var(--ac-font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.cart-step-intro p,
+.cart-step-copy,
+.cart-availability-empty p {
+  margin-top: var(--ac-space-2xs);
+  color: var(--ac-smoke);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
 .cart-choice {
   display: flex;
   width: 100%;
@@ -348,6 +370,21 @@
 .cart-choice[aria-pressed="true"] {
   border-color: var(--ac-oxide);
   background: color-mix(in oklch, var(--ac-oxide), var(--ac-ink-850) 87%);
+}
+
+.cart-choice__state,
+.cart-slot__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--ac-smoke);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cart-choice[data-selected="true"] .cart-choice__state {
+  color: var(--ac-porcelain);
 }
 
 .cart-choice:active,
@@ -427,7 +464,11 @@
 }
 
 .cart-slot {
-  min-height: 3rem;
+  display: grid;
+  min-height: 4.25rem;
+  align-content: center;
+  justify-items: center;
+  gap: 0.2rem;
   border: 1px solid var(--ac-ink-700);
   border-radius: var(--ac-radius-sm);
   background: var(--ac-ink-850);
@@ -441,6 +482,36 @@
   border-color: var(--ac-oxide);
   background: var(--ac-oxide);
   color: var(--ac-ink-950);
+}
+
+.cart-slot__time {
+  font-variant-numeric: tabular-nums;
+}
+
+.cart-slot[aria-pressed="true"] .cart-slot__state {
+  color: var(--ac-ink-950);
+}
+
+/* Un error de consulta y una fecha sin cupo tienen acciones diferentes; no se mezclan. */
+.cart-availability-empty {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ac-space-sm);
+  align-items: start;
+  margin-top: var(--ac-space-sm);
+  border: 1px solid var(--ac-ink-700);
+  border-radius: var(--ac-radius-md);
+  background: var(--ac-ink-850);
+  color: var(--ac-porcelain);
+  padding: var(--ac-space-md);
+}
+
+.cart-availability-empty svg {
+  color: var(--ac-brass);
+}
+
+.cart-availability-empty .cart-action {
+  justify-self: start;
 }
 
 .cart-empty,
@@ -602,6 +673,11 @@
 
   .cart-slots {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cart-availability-empty {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
   }
 }
 

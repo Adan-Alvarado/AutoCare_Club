@@ -408,9 +408,11 @@ export default function CartPage() {
           slots={slots}
           selectedSlot={selectedSlot}
           loading={schedulesQuery.isLoading || schedulesQuery.isFetching}
+          hasError={schedulesQuery.isError}
           onDateChange={changeDate}
           onSelectSlot={selectSlot}
           onContinue={() => navigate(cartPath('payment'))}
+          onRetry={() => void schedulesQuery.refetch()}
         />
       ) : null}
 
